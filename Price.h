@@ -6,17 +6,36 @@ class Price {
 public:
    Price() = delete;
 
-   explicit Price(const double price) : price_(price) {
+   explicit Price(const long long price) : price_(price) {
       assert(price >= 0 && "Price < 0");
    };
 
    [[nodiscard]]
-   double get_price() const {
+   long long get_price() const {
       return price_;
    }
 
+   [[nodiscard]]
+   std::string to_string() const {
+      return std::to_string(price_ / 100) + std::to_string(price_ % 100);
+   }
+
+   bool operator==(const Price &other) const {
+      return get_price() == other.get_price();
+   }
+
 private:
-   double price_;
+   // Stored as the number of 'cents' to prevent double strangeness
+   long long price_;
+};
+
+static_assert(sizeof(size_t) == sizeof(long long));
+
+struct PriceHasher {
+   std::size_t operator()(const Price &price_to_hash) const {
+      static constexpr std::hash<long long> hasher{};
+      return hasher(price_to_hash.get_price());
+   }
 };
 
 #endif //LIMITORDERBOOK_PRICE_H

@@ -1,46 +1,34 @@
 #ifndef LIMITORDERBOOK_ORDERBOOK_H
 #define LIMITORDERBOOK_ORDERBOOK_H
 
-#include <queue>
+#include <list>
 
 #include "typedefs.h"
 #include "Order.h"
 #include "Price.h"
 #include "Quantity.h"
 
-template<OrderType _OrderType>
-using Queue = std::priority_queue<Order<_OrderType>, std::vector<Order<_OrderType> >, std::greater<> >;
+using BidList = std::list<std::shared_ptr<Order<BID> > >;
+using AskList = std::list<std::shared_ptr<Order<ASK> > >;
 
 class OrderBook {
 public:
-   template<OrderType _OrderType>
-   std::optional<Uuid> new_order(Order<_OrderType> &&order) {
-      Queue<_OrderType> &queue = get_queue<_OrderType>();
+   OrderBook();
 
+   bool add_bid(Order<BID> &&bid);
+   bool add_ask(Order<ASK> &&ask);
 
-      if (queue.find(order)) {
-         return std::nullopt;
-      }
-
-      auto result_uuid = order.uuid();
-      queue.push(order);
-
-      return result_uuid;
-   }
+   bool delete_order(Uuid uuid);
 
 private:
-   Queue<BID> bids_{};
-   Queue<ASK> asks_{};
+   Quantity fill_any_asks(Order<BID>& bid);
+   Quantity fill_any_bids(Order<BID>& bid);
 
-   template<OrderType _OrderType>
-   constexpr Queue<_OrderType> &get_queue() {
-      if constexpr (_OrderType == BID) {
-         return bids_;
-      } else {
-         return asks_;
-      }
-   }
+   std::unordered_map<Price, BidList, PriceHasher> price_to_bid{};
+   std::unordered_map<Price, AskList, PriceHasher> price_to_ask{};
+
+   std::unordered_map<Uuid, std::shared_ptr<Order<BID> > > bid_map{};
+   std::unordered_map<Uuid, std::shared_ptr<Order<ASK> > > ask_map{};
 };
-
 
 #endif //LIMITORDERBOOK_ORDERBOOK_H

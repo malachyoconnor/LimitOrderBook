@@ -12,7 +12,7 @@ enum OrderType {
    ASK
 };
 
-template<OrderType OrderType>
+template<OrderType OrderType_>
 class Order {
 public:
    Order() = delete;
@@ -21,9 +21,12 @@ public:
                                                                             quantity_(quantity), price_(price) {
    }
 
+   Order(Order &&other) noexcept : uuid_(std::move(other.uuid_)), created_ts_(std::move(other.created_ts_)),
+                                   quantity_(std::move(other.quantity_)), price_(std::move(other.price_)) {}
+
    bool operator<(const Order &other) const {
       // Bids: Higher prices at the top
-      if constexpr (OrderType == BID) {
+      if constexpr (order_type_ == BID) {
          return this->price() < other.price() ||
                 this->created_ts() < other.created_ts() ||
                 this->quantity() < other.quantity() ||
@@ -65,10 +68,14 @@ public:
       return price_;
    }
 
+   [[nodiscard]] OrderType orderType() const {
+      return order_type_;
+   }
+
    [[nodiscard]] std::string to_string() const {
 
-      return std::format("{} {:%d:%m:%Y} #{} ${:.2f}",
-                         uuid_util::to_string(uuid_), created_ts_, quantity_.get_quantity(), price_.get_price());
+      return std::format("{} {:%d:%m:%Y} #{} ${}",
+                         uuid_util::to_string(uuid_), created_ts_, quantity_.get_quantity(), price_.to_string());
    }
 
 private:
@@ -76,6 +83,8 @@ private:
    Timestamp created_ts_;
    Quantity quantity_;
    Price price_;
+
+   const OrderType order_type_ = OrderType_;
 };
 
 #endif //LIMITORDERBOOK_ORDER_H
