@@ -1,5 +1,6 @@
 #ifndef LIMITORDERBOOK_PRICE_H
 #define LIMITORDERBOOK_PRICE_H
+#include <algorithm>
 #include <cassert>
 
 class Price {
@@ -11,18 +12,16 @@ public:
    };
 
    [[nodiscard]]
-   long long get_price() const {
+   long long price() const {
       return price_;
    }
 
    [[nodiscard]]
    std::string to_string() const {
-      return std::to_string(price_ / 100) + std::to_string(price_ % 100);
+      return std::to_string(price_ / 100) + "." + std::to_string(price_ % 100);
    }
 
-   bool operator==(const Price &other) const {
-      return get_price() == other.get_price();
-   }
+   auto operator<=>(const Price &other) const = default;
 
 private:
    // Stored as the number of 'cents' to prevent double strangeness
@@ -34,7 +33,7 @@ static_assert(sizeof(size_t) == sizeof(long long));
 struct PriceHasher {
    std::size_t operator()(const Price &price_to_hash) const {
       static constexpr std::hash<long long> hasher{};
-      return hasher(price_to_hash.get_price());
+      return hasher(price_to_hash.price());
    }
 };
 

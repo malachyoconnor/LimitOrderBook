@@ -1,11 +1,13 @@
 #ifndef LIMITORDERBOOK_RANDOM_H
 #define LIMITORDERBOOK_RANDOM_H
-#include <uuid.h>
+#include <random>
+
 #include "typedefs.h"
 
-inline namespace Random {
+static_assert(sizeof(uint64_t) == sizeof(unsigned long));
 
-   static uuids::uuid_random_generator get_random_generator() {
+namespace Random {
+   static std::mt19937 get_random_generator() {
       std::random_device rd;
       static auto seed_data = std::array<int, std::mt19937::state_size>{};
 
@@ -13,17 +15,14 @@ inline namespace Random {
       static std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
 
       std::mt19937 generator(seq);
-      uuids::uuid_random_generator gen{generator};
-
-      return gen;
+      return generator;
    }
 
-   static uuids::uuid_random_generator random_generator_ = get_random_generator();
+   static std::mt19937 random_generator_ = get_random_generator();
 
-   inline uuids::uuid uuid() {
+   inline uint64_t uuid() {
       return random_generator_();
    }
-
 }
 
 
