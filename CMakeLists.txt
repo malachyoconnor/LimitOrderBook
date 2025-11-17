@@ -12,4 +12,4 @@ add_executable(LimitOrderBook main.cpp
         OrderBook.cpp
         OrderBook.h)
 
-target_compile_options(LimitOrderBook PUBLIC -Werror=switch)
+target_compile_options(LimitOrderBook PUBLIC -Werror=switch -Wall -Wextra -Werror)

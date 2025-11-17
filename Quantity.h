@@ -16,7 +16,7 @@ public:
 
    auto operator<=>(const Quantity &) const = default;
 
-   auto operator==(const uint64_t& other) const -> bool {
+   auto operator==(const int64_t& other) const -> bool {
       return quantity() == other;
    }
 

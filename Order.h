@@ -21,7 +21,7 @@ public:
       side_(side) {
    }
 
-   std::string string() const {
+   [[nodiscard]] std::string string() const {
       return std::format("{:x} #{} £{}.{}", orderId_, quantity_.quantity(), price_.price() / 100, price_.price() % 100);
    }
 

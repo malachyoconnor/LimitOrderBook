@@ -23,5 +23,4 @@ namespace Random {
    }
 }
 
-
 #endif //LIMITORDERBOOK_RANDOM_H
