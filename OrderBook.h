@@ -1,45 +1,43 @@
 #ifndef LIMITORDERBOOK_ORDERBOOK_H
 #define LIMITORDERBOOK_ORDERBOOK_H
 
-#include <queue>
-
-#include "typedefs.h"
+#include <list>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
 #include "Order.h"
-#include "Price.h"
-#include "Quantity.h"
+#include "typedefs.h"
 
-template<OrderType _OrderType>
-using Queue = std::priority_queue<Order<_OrderType>, std::vector<Order<_OrderType> >, std::greater<> >;
+template<Side _Side>
+using GeneralBook = std::map<Price, std::list<std::weak_ptr<Order> >,
+   std::conditional_t<_Side == BID, std::greater<>, std::less<> >>;
+
+using BidBook = std::map<Price, std::list<std::weak_ptr<Order> >, std::greater<> >;
+using AskBook = std::map<Price, std::list<std::weak_ptr<Order> >, std::less<> >;
+
+static_assert(std::is_same_v<BidBook, GeneralBook<BID> >);
+static_assert(std::is_same_v<AskBook, GeneralBook<ASK> >);
+
+// NOTE: Nowhere do we actually tell the ask how much it's been paid
 
 class OrderBook {
 public:
-   template<OrderType _OrderType>
-   std::optional<Uuid> new_order(Order<_OrderType> &&order) {
-      Queue<_OrderType> &queue = get_queue<_OrderType>();
+   OrderBook() = default;
 
-
-      if (queue.find(order)) {
-         return std::nullopt;
-      }
-
-      auto result_uuid = order.uuid();
-      queue.push(order);
-
-      return result_uuid;
-   }
+   bool add_order(const Order &order);
+   bool delete_order(const Uuid& orderId);
+   void pretty_print() const;
 
 private:
-   Queue<BID> bids_{};
-   Queue<ASK> asks_{};
+   void fill_order(std::shared_ptr<Order> & order, Quantity quantity);
+   bool try_fill_ask(std::shared_ptr<Order> &ask, BidBook &book);
+   bool try_fill_bid(std::shared_ptr<Order> &bid, AskBook &book);
 
-   template<OrderType _OrderType>
-   constexpr Queue<_OrderType> &get_queue() {
-      if constexpr (_OrderType == BID) {
-         return bids_;
-      } else {
-         return asks_;
-      }
-   }
+   BidBook price_to_bids{};
+   AskBook price_to_asks{};
+
+   std::unordered_map<Uuid, std::shared_ptr<Order> > uuid_to_order_map{};
+   std::unordered_set<Uuid> filled_orders{};
 };
 
 

@@ -9,12 +9,7 @@ add_executable(LimitOrderBook main.cpp
         Quantity.h
         typedefs.h
         Random.h
-        libs/uuid_utils.h
         OrderBook.cpp
         OrderBook.h)
-
-add_subdirectory(libs)
-target_link_libraries(LimitOrderBook PUBLIC uuid)
-
 
 target_compile_options(LimitOrderBook PUBLIC -Werror=switch)

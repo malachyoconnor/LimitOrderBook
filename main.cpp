@@ -1,23 +1,29 @@
 #include <algorithm>
 #include <iostream>
-#include <uuid.h>
 #include "Order.h"
 #include "OrderBook.h"
 #include "Random.h"
 
-using uuids::uuid;
 
 
 int main() {
+   auto book = OrderBook();
 
-   auto order = Order<BID>(Random::uuid(), Clock::now(), Quantity(5), Price(1003.31));
+   Uuid id = 0;
 
+   std::vector orders = {
+      Order(id++, Clock::now(), Quantity(3), Price(3'00), BID),
+      Order(id++, Clock::now(), Quantity(10), Price(30'00), ASK),
+      Order(id++, Clock::now(), Quantity(3), Price(10'00), BID),
+      Order(id++, Clock::now(), Quantity(10), Price(20'00), BID),
+      Order(id++, Clock::now(), Quantity(10), Price(20'00), ASK),
+   };
 
-   OrderBook book {};
-   book.new_order(std::move(order));
+   for (auto order : orders) {
+      book.add_order(order);
+   }
 
-   std::cout << order.to_string() << std::endl;
-
+   book.pretty_print();
 
    return 0;
 }
