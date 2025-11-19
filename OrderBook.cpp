@@ -3,7 +3,7 @@
 #include <ranges>
 
 template<Side Side_>
-bool OrderBook::try_fill_order(const OrderStorage::iterator &new_order, OppositeBook<Side_> &book) {
+bool OrderBook::try_fill_order(const OrderStorageIterator &new_order, OppositeBook<Side_> &book) {
    for (auto &[price, level]: book) {
       if constexpr (Side_ == ASK) {
          if (price < new_order->price()) return false;
@@ -29,10 +29,10 @@ bool OrderBook::try_fill_order(const OrderStorage::iterator &new_order, Opposite
    return false;
 }
 
-bool OrderBook::add_order(Order &order) {
+bool OrderBook::add_order(Order order) {
    if (order.quantity() == 0) return false;
 
-   OrderStorage::iterator order_iterator = store_order(std::move(order));
+   OrderStorageIterator order_iterator = store_order(order);
 
    if (order.side() == ASK) {
       if (try_fill_order<ASK>(order_iterator, bid_book_)) {
@@ -50,7 +50,7 @@ bool OrderBook::add_order(Order &order) {
    return false;
 }
 
-bool OrderBook::delete_from_level(Uuid orderId, std::list<OrderStorage::iterator> &level) {
+bool OrderBook::delete_from_level(Uuid orderId, std::list<OrderStorageIterator> &level) {
    for (auto iter = level.begin(); iter != level.end();) {
       if ((*iter)->order_id() == orderId) {
          level.erase(iter++);
@@ -60,15 +60,15 @@ bool OrderBook::delete_from_level(Uuid orderId, std::list<OrderStorage::iterator
    return false;
 }
 
-bool OrderBook::remove_order(Uuid &orderId) {
+bool OrderBook::delete_order(Uuid order_id) {
    for (size_t i = 0; i < order_storage_.size(); i++) {
       auto &relevant_order = order_storage_[i];
-      if (relevant_order.order_id() == orderId) {
-         available_indexes_.push(order_storage_.begin() + i);
+      if (relevant_order.order_id() == order_id) {
+         available_indexes_.emplace(order_storage_, i);
          if (relevant_order.side() == ASK) {
-            return delete_from_level(orderId, ask_book_[relevant_order.price()]);
+            return delete_from_level(order_id, ask_book_[relevant_order.price()]);
          } else {
-            return delete_from_level(orderId, bid_book_[relevant_order.price()]);
+            return delete_from_level(order_id, bid_book_[relevant_order.price()]);
          }
       }
    }
@@ -76,7 +76,7 @@ bool OrderBook::remove_order(Uuid &orderId) {
    return false;
 }
 
-void OrderBook::fill_order(const OrderStorage::iterator &order_to_fill, Quantity quantity) {
+void OrderBook::fill_order(const OrderStorageIterator &order_to_fill, Quantity quantity) {
    assert((order_to_fill->quantity() >= quantity) && "Tried to overfill an order");
 
    order_to_fill->fill(quantity);
@@ -88,13 +88,13 @@ void OrderBook::fill_order(const OrderStorage::iterator &order_to_fill, Quantity
    }
 }
 
-OrderStorage::iterator OrderBook::store_order(Order &&to_store) {
+OrderStorageIterator OrderBook::store_order(const Order &to_store) {
    if (available_indexes_.size() == 0) {
       order_storage_.push_back(to_store);
-      return --order_storage_.end();
+      return OrderStorageIterator(order_storage_, order_storage_.size()-1);
    }
 
-   OrderStorage::iterator iter = available_indexes_.top();
+   OrderStorageIterator iter = available_indexes_.top();
    available_indexes_.pop();
    *iter = to_store;
    return iter;

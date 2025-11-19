@@ -17,7 +17,7 @@ public:
       return quantity_ == rhs;
    }
 
-   Quantity operator-(Quantity &other) const {
+   Quantity operator-(const Quantity other) const {
       return Quantity(quantity_ - other.quantity_);
    }
 
