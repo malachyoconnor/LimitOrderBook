@@ -6,6 +6,10 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(LimitOrderBook main.cpp
         typedefs.h
         Random.h
-        )
+        OrderBook.cpp
+        OrderBook.h
+        Quantity.h
+        Price.h
+)
 
 target_compile_options(LimitOrderBook PUBLIC -Werror=switch -Wall -Wextra -Werror)
