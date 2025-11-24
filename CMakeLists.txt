@@ -3,16 +3,22 @@ project(LimitOrderBook)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(LimitOrderBook
-        main.cpp
+add_library(LimitOrderBook
+        OrderBook.cpp
+        OrderBook.h
         Price.h
         Quantity.h
         OrderType.h
-        OrderBook.cpp
-        OrderBook.h
         Trade.h
-        typedefs.h
         Random.h
+        typedefs.h
 )
-
 target_compile_options(LimitOrderBook PUBLIC -Werror=switch -Wall -Wextra -Werror)
+
+add_executable(LOB main.cpp)
+target_link_libraries(LOB PUBLIC LimitOrderBook)
+
+
+add_executable(visualiser visualiser.cpp)
+add_subdirectory(libs)
+target_link_libraries(visualiser PUBLIC LimitOrderBook raylib)
