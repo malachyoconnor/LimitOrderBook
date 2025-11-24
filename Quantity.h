@@ -13,12 +13,14 @@ public:
 
     auto operator<=>(const Quantity& other) const = default;
 
-    Quantity& fill(Quantity& other) {
+    Quantity& fill(const Quantity& other) {
         assert(quantity_ >= other.quantity_);
 
         quantity_ -= other.quantity_;
         return *this;
     }
+
+   int64_t GetQuantity() const { return quantity_; }
 
 private:
     int64_t quantity_;

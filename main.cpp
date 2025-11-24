@@ -5,16 +5,19 @@
 
 int main() {
 
-   OrderBook book {};
+   OrderBook book{};
 
-   std::vector<Order> orders {
-      Order(1, Price(10), Quantity(10), BID, OrderType::GoodTillCancel),
-      Order(2, Price(10), Quantity(10), ASK, OrderType::GoodTillCancel)
+   std::vector<Order> test_orders{
+      Order(1, Price(10), Quantity(10), BID, GoodTillCancel),
+      Order(2, Price(12), Quantity(12), ASK, GoodTillCancel),
+      Order(3, Quantity(8), ASK, Market),
+      Order(3, Price(3), Quantity(3), ASK, FillOrKill),
    };
 
-   for (auto& order : orders) {
+   for (auto &order: test_orders) {
       book.AddOrder(order);
-      std::cout << book.Size()  << std::endl;
+      book.PrintBook();
+      std::cout << std::endl;
    }
 
 

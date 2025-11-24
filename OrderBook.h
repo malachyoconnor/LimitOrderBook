@@ -8,9 +8,9 @@
 
 #include "Trade.h"
 
-using OrderPointer = std::list<Order>::iterator;
-
 using enum Side;
+using enum OrderType;
+using OrderPointer = std::list<Order>::iterator;
 
 template<Side Side_>
 using Book =
@@ -22,17 +22,19 @@ public:
 
    template<Side Side_>
    bool TryFill(Order &orderToFill);
-
    bool AddOrder(Order order);
    bool DeleteOrder(Uuid uuid);
+   void PrintBook();
 
    std::size_t Size() const { return order_map_.size(); };
-
-
 
 private:
    template<Side Side_>
    Book<Side_> &getBook();
+
+   template<Side Side_>
+   bool CanBeFilled(Order orderToFill);
+   std::optional<Price> GetWorstPrice(const Order &order) const;
 
    void OnMatch(Order &orderToFill, Order &otherOrder);
 
