@@ -4,6 +4,8 @@
 #include "Price.h"
 #include <list>
 #include <map>
+#include <mutex>
+#include <generator>
 #include <unordered_map>
 
 #include "Trade.h"
@@ -25,6 +27,9 @@ public:
    bool AddOrder(Order order);
    bool DeleteOrder(Uuid uuid);
    void PrintBook();
+
+   template<Side Side_>
+   std::generator<Order> orderGenerator();
 
    std::size_t Size() const { return order_map_.size(); };
 

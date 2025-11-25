@@ -54,9 +54,10 @@ public:
 
    bool isFilled() const { return GetQuantity() == ZERO; }
 
-   Order &ToGoodTillCancel(Price price) {
+   Order ToFillAndKill(Price price) {
       assert(orderType_ == OrderType::Market);
 
+      orderType_ = OrderType::FillAndKill;
       price_ = price;
       return *this;
    }

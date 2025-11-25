@@ -10,5 +10,5 @@ add_subdirectory(visualiser)     # Visualisation implementation
 add_executable(LOB main.cpp RandomOrderGenerator.h)
 target_link_libraries(LOB PUBLIC LimitOrderBook)
 
-add_executable(go_visualise visualise.cpp)
+add_executable(go_visualise visualise.cpp RandomOrderGenerator.h)
 target_link_libraries(go_visualise PUBLIC visualiser LimitOrderBook raylib)

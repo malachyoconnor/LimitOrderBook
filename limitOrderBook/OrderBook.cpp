@@ -12,14 +12,20 @@ Book<Side_> &OrderBook::getBook() {
    else return bids_;
 }
 
+// TODO: Yuck, disgusting. Not handling cleaning up well - resulting in this unholy mess.
 std::optional<Price> OrderBook::GetWorstPrice(const Order &order) const {
    if (order.GetSide() == ASK) {
       if (bids_.empty()) return std::nullopt;
-      return bids_.rbegin()->second.begin()->GetPrice();
+      for (auto iter = bids_.begin(); iter != bids_.end(); ++iter) {
+         if (!iter->second.empty()) return iter->second.begin()->GetPrice();
+      }
    } else {
       if (asks_.empty()) return std::nullopt;
-      return asks_.rbegin()->second.begin()->GetPrice();
+      for (auto iter = bids_.begin(); iter != bids_.end(); ++iter) {
+         if (!iter->second.empty()) return iter->second.begin()->GetPrice();
+      }
    }
+   return std::nullopt;
 }
 
 void OrderBook::OnMatch(Order &orderToFill, Order &otherOrder) {
@@ -42,7 +48,8 @@ bool OrderBook::AddOrder(Order order) {
 
    if (order.GetOrderType() == Market) {
       if (auto marketPrice = GetWorstPrice(order); marketPrice.has_value()) {
-         order = order.ToGoodTillCancel(marketPrice.value());
+         assert(marketPrice.value().GetPrice() != 0);
+         order = order.ToFillAndKill(marketPrice.value());
       } else {
          return false; // We shouldn't add a market order if there's no-one to take the other side.
       }
@@ -73,7 +80,10 @@ bool OrderBook::TryFill(Order &orderToFill) {
 
    if (orderToFill.GetOrderType() == FillOrKill && !CanBeFilled<Side_>(orderToFill)) return false;
 
-   for (auto &[price, level]: book) {
+
+   for (auto book_iter = book.begin(); book_iter != book.end();) {
+
+      auto &[price, level] = *book_iter;
 
       if (orderToFill.GetOrderType() != Market) {
          if (Side_ == ASK && price < orderToFill.GetPrice()) return orderToFill.isFilled();
@@ -92,6 +102,12 @@ bool OrderBook::TryFill(Order &orderToFill) {
             ++iter;
          }
          if (orderToFill.isFilled()) return true;
+      }
+
+      if (level.empty()) {
+         book.erase(book_iter++);
+      } else {
+         ++book_iter;
       }
    }
 
@@ -136,9 +152,21 @@ bool OrderBook::DeleteOrder(Uuid uuid) {
 }
 
 template<Side Side_>
-std::generator<Order &> orderGenerator(Book<Side_> &book) {
+std::generator<Order> OrderBook::orderGenerator() {
+
+   Book<Side_> *book_ptr;
+   if constexpr (Side_ == BID) {
+      book_ptr = &bids_;
+   } else {
+      book_ptr = &asks_;
+   }
+   Book<Side_> &book = *book_ptr;
+
    for (auto &level: book | std::views::values) {
       for (auto &order: level) {
+         if (order.GetPrice().GetPrice() == 0) {
+            std::cout << "IDSAJKHDKSAH";
+         }
          co_yield order;
       }
    }
@@ -146,8 +174,8 @@ std::generator<Order &> orderGenerator(Book<Side_> &book) {
 
 void OrderBook::PrintBook() {
 
-   auto bid_gen = orderGenerator<BID>(bids_);
-   auto ask_gen = orderGenerator<ASK>(asks_);
+   auto bid_gen = orderGenerator<BID>();
+   auto ask_gen = orderGenerator<ASK>();
    auto bid_iter = bid_gen.begin();
    auto ask_iter = ask_gen.begin();
 
