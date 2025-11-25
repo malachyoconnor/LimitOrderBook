@@ -11,20 +11,20 @@ int main() {
 
    auto randomOrderGenerator = RandomOrderGenerator(LOWEST_PRICE, HIGHEST_PRICE, 100);
    auto book = OrderBook();
-   auto vis = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE, book);
+   auto histogramRenderer = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE, book);
 
    for (int i = 0; i < NUM_ORDERS_TO_ADD; i++) {
       Order randomOrder = randomOrderGenerator.GetRandomGoodTillCancelOrder();
       book.AddOrder(randomOrder);
 
-      vis.Loop();
+      histogramRenderer.Loop();
       std::cout << i << "\r";
       std::flush(std::cout);
    }
 
    book.PrintBook();
 
-   while (!WindowShouldClose()) vis.Loop();
+   while (!WindowShouldClose()) histogramRenderer.Loop();
 
 
 }

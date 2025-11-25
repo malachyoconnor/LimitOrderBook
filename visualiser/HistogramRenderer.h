@@ -16,7 +16,8 @@ constexpr Color BUCKET_OUTLINE_COLOUR = RED;
 constexpr Color BUCKET_INNER_COLOUR = BLACK;
 constexpr Color BUCKET_INNER_HIGHLIGHT_COLOUR = WHITE;
 
-constexpr int BUCKET_VERTICAL_OFFSET = 70;
+constexpr int HISTOGRAM_VERTICAL_OFFSET = 70;
+constexpr int HISTOGRAM_SEPARATION_DISTANCE = 50;
 
 // TEMP TEMP
 inline double random_normalised_double() {
@@ -34,24 +35,28 @@ public:
       SetConfigFlags(FLAG_WINDOW_RESIZABLE);
       InitWindow(400, 400, "Visualiser");
       int monitor = GetCurrentMonitor();
-      int initialWidth = 3 * GetMonitorWidth(monitor) / 4;
-      int initialHeight = 3 * GetMonitorHeight(monitor) / 4;
-      buckets_fill_percentage_.reserve(highestPrice_ - lowestPrice_ + 1);
+      windowWidth_ = 3 * GetMonitorWidth(monitor) / 4;
+      windowHeight_ = 3 * GetMonitorHeight(monitor) / 4;
 
-      SetWindowSize(initialWidth, initialHeight);
-      SetWindowPosition(GetMonitorWidth(monitor) / 2 - initialWidth / 2,
-                        GetMonitorHeight(monitor) / 2 - initialHeight / 2);
+      ask_buckets_fill_percentage_.reserve(highestPrice_ - lowestPrice_ + 1);
+      bid_buckets_fill_percentage_.reserve(highestPrice_ - lowestPrice_ + 1);
+
+      SetWindowSize(windowWidth_, windowHeight_);
+      SetWindowPosition(GetMonitorWidth(monitor) / 2 - windowWidth_ / 2,
+                        GetMonitorHeight(monitor) / 2 - windowHeight_ / 2);
       SetTargetFPS(120);
    }
 
    void Loop() {
+      windowWidth_ = GetScreenWidth();
+      windowHeight_ = GetScreenHeight();
       if (!WindowShouldClose()) {
          BeginDrawing();
          ClearBackground(BLACK);
 
-         // TMP
          CalculateBucketFullness();
          DrawBuckets();
+
          DrawTextOverlay();
 
          EndDrawing();
@@ -59,8 +64,8 @@ public:
    }
 
    void CalculateBucketFullness();
-   void DrawBuckets();
-   void DrawTextOverlay();
+   void DrawBuckets() const;
+   void DrawTextOverlay() const;
 
    ~HistogramRenderer() {
       CloseWindow();
@@ -70,10 +75,25 @@ private:
    int64_t lowestPrice_;
    int64_t highestPrice_;
    OrderBook &orderBook_;
-   std::vector<double> buckets_fill_percentage_{};
+   int windowWidth_;
+   int windowHeight_;
+   std::vector<double> bid_buckets_fill_percentage_{};
+   std::vector<double> ask_buckets_fill_percentage_{};
 
-   int GetNumberOfBuckets() const;
-   std::pair<int, int> GetBucketWidthAndHeight() const;
+   int GetTotalNumberOfBuckets() const;
+   std::pair<int, int> GetSingleBucketWidthAndHeight() const;
    std::pair<int, int> GetBucketPosition(int bucket_index) const;
    bool IsMouseInBucket(int bucket_index) const;
+
+   template<Side Side_>
+   const std::vector<double> &GetCorrectBucketVector() const;
+
+   template<Side Side_>
+   std::vector<double> &GetCorrectBucketVector();
+
+   template<Side Side_>
+   void CalculateBucketFullness();
+
+   template<Side Side_>
+   void DrawBuckets() const;
 };
