@@ -1,15 +1,23 @@
 #pragma once
+#include <algorithm>
 #include <random>
-#include "Order.h"
-#include "Random.h"
+#include <array>
+#include <Order.h>
 
 
 class RandomOrderGenerator {
 public:
-   RandomOrderGenerator(int min_price, int max_price, int max_quantity, std::mt19937 &generator)
+   RandomOrderGenerator(int min_price, int max_price, int max_quantity)
       : price_distribution_(min_price, max_price),
-        quantity_distribution_(0, max_quantity),
-        generator_(generator) {
+        quantity_distribution_(0, max_quantity) {
+
+      std::random_device rd;
+      static auto seed_data = std::array<int, std::mt19937::state_size>{};
+
+      std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+      static std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+
+      generator_ = std::mt19937(seq);
    }
 
    Order GetRandomOrder() {
