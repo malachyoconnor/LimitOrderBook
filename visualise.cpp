@@ -18,8 +18,7 @@ int main() {
       book.AddOrder(randomOrder);
 
       histogramRenderer.Loop();
-      std::cout << i << "\r";
-      std::flush(std::cout);
+      std::cout << i << "\r" << std::flush;
    }
 
    book.PrintBook();

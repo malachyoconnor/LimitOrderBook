@@ -154,19 +154,11 @@ bool OrderBook::DeleteOrder(Uuid uuid) {
 template<Side Side_>
 std::generator<Order> OrderBook::orderGenerator() {
 
-   Book<Side_> *book_ptr;
-   if constexpr (Side_ == BID) {
-      book_ptr = &bids_;
-   } else {
-      book_ptr = &asks_;
-   }
-   Book<Side_> &book = *book_ptr;
+   Book<Side_> &book = getBook<Side_>();
 
    for (auto &level: book | std::views::values) {
       for (auto &order: level) {
-         if (order.GetPrice().GetPrice() == 0) {
-            std::cout << "IDSAJKHDKSAH";
-         }
+         assert(order.GetPrice().GetPrice() != 0);
          co_yield order;
       }
    }
@@ -179,21 +171,21 @@ void OrderBook::PrintBook() {
    auto bid_iter = bid_gen.begin();
    auto ask_iter = ask_gen.begin();
 
-   std::cout << std::format("{:^40}{:^40}", "BIDS", "ASKS") << std::endl;
+   std::cout << std::format("{:^50}{:^50}", "BIDS", "ASKS") << std::endl;
 
    while (bid_iter != bid_gen.end() || ask_iter != ask_gen.end()) {
       if (bid_iter != bid_gen.end()) {
-         std::cout << std::format("{:^40}", (*bid_iter).string());
+         std::cout << std::format("{:^50}", (*bid_iter).string());
          ++bid_iter;
       } else {
-         std::cout << std::format("{:^40}", "");
+         std::cout << std::format("{:^50}", "");
       }
 
       if (ask_iter != ask_gen.end()) {
-         std::cout << std::format("{:^40}", (*ask_iter).string()) << std::endl;
+         std::cout << std::format("{:^50}", (*ask_iter).string()) << std::endl;
          ++ask_iter;
       } else {
-         std::cout << std::format("{:^40}", "") << std::endl;
+         std::cout << std::format("{:^50}", "") << std::endl;
       }
    }
 

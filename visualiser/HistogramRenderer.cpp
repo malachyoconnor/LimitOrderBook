@@ -1,5 +1,6 @@
 #include "HistogramRenderer.h"
 
+#include <cmath>
 #include <numeric>
 
 
@@ -37,11 +38,14 @@ void HistogramRenderer::CalculateBucketFullness() {
    auto &buckets_vector = GetCorrectBucketVector<Side_>();
 
    buckets_vector.resize(num_buckets);
-   int bucket_value = (highestPrice_ - lowestPrice_) / num_buckets;
+   int64_t bucket_value = (highestPrice_ - lowestPrice_ + 1) / (num_buckets);
 
    for (Order order: orderBook_.orderGenerator<Side_>()) {
       assert(is_between_inclusive(order.GetPrice().GetPrice(), lowestPrice_, highestPrice_));
-      int bucket_index = order.GetPrice().GetPrice() / bucket_value;
+
+      auto price = order.GetPrice().GetPrice();
+      uint64_t bucket_index = (price - lowestPrice_) / bucket_value;
+      bucket_index = std::min(bucket_index, buckets_vector.size() - 1);
       buckets_vector[bucket_index] += order.GetQuantity().GetQuantity();
    }
 
@@ -53,7 +57,8 @@ void HistogramRenderer::CalculateBucketFullness() {
    }
 
    for (double &bucket_percentage: buckets_vector) {
-      bucket_percentage /= total_quantity;
+      bucket_percentage = (bucket_percentage / total_quantity) ;
+      bucket_percentage = 1 - std::pow(1 - bucket_percentage, 5);
       assert(is_between_inclusive(bucket_percentage, 0.0, 1.0));
    }
 }
@@ -97,6 +102,8 @@ void HistogramRenderer::DrawTextOverlay() const {
 }
 
 int HistogramRenderer::GetTotalNumberOfBuckets() const {
+   // TODO: This is wrong. The last bucket includes the end of the
+   // Highest price
    int num_buckets = (highestPrice_ - lowestPrice_) * 2;
    int max_bucket_width = (windowWidth_ - HISTOGRAM_SEPARATION_DISTANCE) / num_buckets;
    while (max_bucket_width < 2) {
@@ -119,7 +126,7 @@ std::pair<int, int> HistogramRenderer::GetBucketPosition(int bucket_index) const
    int single_bucket_width = GetSingleBucketWidthAndHeight().first;
 
    int total_buckets = GetTotalNumberOfBuckets();
-   int gap_size = (windowWidth_ - total_buckets * single_bucket_width )/ 3;
+   int gap_size = (windowWidth_ - total_buckets * single_bucket_width) / 3;
 
    int outline_x = single_bucket_width * bucket_index + gap_size;
 
