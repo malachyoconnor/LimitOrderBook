@@ -15,10 +15,13 @@ add_library(LimitOrderBook
 )
 target_compile_options(LimitOrderBook PUBLIC -Werror=switch -Wall -Wextra -Werror)
 
-add_executable(LOB main.cpp)
+add_executable(LOB main.cpp
+        RandomTradeGenerator.h)
 target_link_libraries(LOB PUBLIC LimitOrderBook)
 
 
-add_executable(visualiser visualiser.cpp)
+add_executable(visualiser visualiser.cpp
+        visualiser_utils.h
+        RandomTradeGenerator.h)
 add_subdirectory(libs)
 target_link_libraries(visualiser PUBLIC LimitOrderBook raylib)
