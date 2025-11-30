@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cassert>
-#include <iostream>
-#include <memory>
-#include <utility>
+#include <functional>
 #include <vector>
 
 #include "raylib.h"
@@ -12,54 +9,48 @@
 
 using namespace Util;
 
-constexpr Color BUCKET_OUTLINE_COLOUR = RED;
-constexpr Color BUCKET_INNER_COLOUR = BLACK;
+constexpr Color BUCKET_GRID_COLOUR = RED;
+constexpr Color BUCKET_BACKGROUND_COLOUR = BLACK;
+constexpr Color BUCKET_FILL_COLOUR = GREEN;
 constexpr Color BUCKET_INNER_HIGHLIGHT_COLOUR = WHITE;
 
 constexpr int HISTOGRAM_VERTICAL_OFFSET = 70;
 constexpr int HISTOGRAM_SEPARATION_DISTANCE = 50;
 
-// TEMP TEMP
-inline double random_normalised_double() {
-   return rand() / (RAND_MAX + 1.0);
-}
+struct Dimensions {
+   double x_percentage;
+   double y_percentage;
+   double width_percentage;
+   double height_percentage;
+};
 
 
 class HistogramRenderer {
 public:
-   HistogramRenderer(int lowestPrice, int highestPrice, OrderBook &orderBook)
+   HistogramRenderer(int lowestPrice, int highestPrice, Dimensions dimensions,
+                     std::function<std::generator<Order>()> orderGenerator,
+                     int numberOfBuckets = 100)
       : lowestPrice_(lowestPrice),
         highestPrice_(highestPrice),
-        orderBook_(orderBook) {
+        dimensions_(dimensions),
+        orderGenerator_(orderGenerator),
+        numberOfBuckets_(numberOfBuckets) {
 
-      SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-      InitWindow(400, 400, "Visualiser");
-      int monitor = GetCurrentMonitor();
-      windowWidth_ = 3 * GetMonitorWidth(monitor) / 4;
-      windowHeight_ = 3 * GetMonitorHeight(monitor) / 4;
-
-      ask_buckets_fill_percentage_.reserve(highestPrice_ - lowestPrice_ + 1);
-      bid_buckets_fill_percentage_.reserve(highestPrice_ - lowestPrice_ + 1);
-
-      SetWindowSize(windowWidth_, windowHeight_);
-      SetWindowPosition(GetMonitorWidth(monitor) / 2 - windowWidth_ / 2,
-                        GetMonitorHeight(monitor) / 2 - windowHeight_ / 2);
-      SetTargetFPS(120);
+      histogramWidth_ = static_cast<int>(GetScreenWidth() * dimensions_.width_percentage);
+      histogramHeight_ = static_cast<int>(GetScreenHeight() * dimensions_.height_percentage);
+      buckets_.reserve(static_cast<size_t>(dimensions.width_percentage * histogramWidth_) + 1);
    }
 
    void Loop() {
-      windowWidth_ = GetScreenWidth();
-      windowHeight_ = GetScreenHeight();
+      histogramWidth_ = static_cast<int>(GetScreenWidth() * dimensions_.width_percentage);
+      histogramHeight_ = static_cast<int>(GetScreenHeight() * dimensions_.height_percentage);
+      histogramX_ = static_cast<int>(GetScreenWidth() * dimensions_.x_percentage);
+      histogramY_ = static_cast<int>(GetScreenHeight() * dimensions_.y_percentage);
       if (!WindowShouldClose()) {
-         BeginDrawing();
-         ClearBackground(BLACK);
-
          CalculateBucketFullness();
          DrawBuckets();
 
          DrawTextOverlay();
-
-         EndDrawing();
       }
    }
 
@@ -67,33 +58,25 @@ public:
    void DrawBuckets() const;
    void DrawTextOverlay() const;
 
+   int GetHistogramWidth() const { return histogramWidth_; }
+
    ~HistogramRenderer() {
       CloseWindow();
    }
 
 private:
+   bool MouseInsideHistogram() const;
+
    int64_t lowestPrice_;
    int64_t highestPrice_;
-   OrderBook &orderBook_;
-   int windowWidth_;
-   int windowHeight_;
-   std::vector<double> bid_buckets_fill_percentage_{};
-   std::vector<double> ask_buckets_fill_percentage_{};
+   Dimensions dimensions_;
+   std::function<std::generator<Order>()> orderGenerator_;
+   int numberOfBuckets_;
 
-   int GetTotalNumberOfBuckets() const;
-   std::pair<int, int> GetSingleBucketWidthAndHeight() const;
-   std::pair<int, int> GetBucketPosition(int bucket_index) const;
-   bool IsMouseInBucket(int bucket_index) const;
+   std::vector<double> buckets_;
 
-   template<Side Side_>
-   const std::vector<double> &GetCorrectBucketVector() const;
-
-   template<Side Side_>
-   std::vector<double> &GetCorrectBucketVector();
-
-   template<Side Side_>
-   void CalculateBucketFullness();
-
-   template<Side Side_>
-   void DrawBuckets() const;
+   int histogramWidth_;
+   int histogramHeight_;
+   int histogramX_;
+   int histogramY_;
 };

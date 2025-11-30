@@ -1,145 +1,71 @@
 #include "HistogramRenderer.h"
 
-#include <cmath>
-#include <numeric>
-
-
 void HistogramRenderer::CalculateBucketFullness() {
-   CalculateBucketFullness<BID>();
-   CalculateBucketFullness<ASK>();
+   int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
+   buckets_.resize(numberOfBuckets_);
+
+   int64_t total_quantity = 0;
+   std::fill(buckets_.begin(), buckets_.end(), 0);
+
+   for (auto order: orderGenerator_()) {
+      const int64_t price = order.GetPrice().GetPrice();
+      int bucket_index = price / bucket_value;
+      bucket_index = std::clamp(bucket_index, 0, numberOfBuckets_ - 1);
+
+      const auto quantity = order.GetQuantity().GetQuantity();
+      buckets_.at(bucket_index) += static_cast<double>(quantity);
+      total_quantity += quantity;
+   }
+
+   if (total_quantity == 0) return;
+
+   for (int i = 0; i < numberOfBuckets_; i++) {
+      buckets_.at(i) /= static_cast<double>(total_quantity);
+   }
 }
 
 void HistogramRenderer::DrawBuckets() const {
-   DrawBuckets<BID>();
-   DrawBuckets<ASK>();
-}
+   const int bucketWidth = histogramWidth_ / numberOfBuckets_;
 
-template<Side Side_>
-const std::vector<double> &HistogramRenderer::GetCorrectBucketVector() const {
-   if constexpr (Side_ == ASK) {
-      return ask_buckets_fill_percentage_;
-   } else {
-      return bid_buckets_fill_percentage_;
-   }
-}
+   for (int i = 0; i <= numberOfBuckets_; i++) {
+      const int x = histogramX_ + (i * bucketWidth);
+      const int y = histogramY_;
 
-template<Side Side_>
-std::vector<double> &HistogramRenderer::GetCorrectBucketVector() {
-   if constexpr (Side_ == ASK) {
-      return ask_buckets_fill_percentage_;
-   } else {
-      return bid_buckets_fill_percentage_;
-   }
-}
+      // Start by drawing the bucket grid. If we have 10 buckets, we need to draw 11 lines.
+      DrawLine(x, y, x, y + histogramHeight_, BUCKET_GRID_COLOUR);
+      if (i < numberOfBuckets_) {
+         DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_, BUCKET_BACKGROUND_COLOUR);
 
-template<Side Side_>
-void HistogramRenderer::CalculateBucketFullness() {
-   int num_buckets = GetTotalNumberOfBuckets();
-   auto &buckets_vector = GetCorrectBucketVector<Side_>();
-
-   buckets_vector.resize(num_buckets);
-   int64_t bucket_value = (highestPrice_ - lowestPrice_ + 1) / (num_buckets);
-
-   for (Order order: orderBook_.orderGenerator<Side_>()) {
-      assert(is_between_inclusive(order.GetPrice().GetPrice(), lowestPrice_, highestPrice_));
-
-      auto price = order.GetPrice().GetPrice();
-      uint64_t bucket_index = (price - lowestPrice_) / bucket_value;
-      bucket_index = std::min(bucket_index, buckets_vector.size() - 1);
-      buckets_vector[bucket_index] += order.GetQuantity().GetQuantity();
-   }
-
-   double total_quantity = std::reduce(buckets_vector.begin(), buckets_vector.end(), 0.0);
-
-   if (total_quantity == 0) {
-      std::ranges::fill(buckets_vector, 0);
-      return;
-   }
-
-   for (double &bucket_percentage: buckets_vector) {
-      bucket_percentage = (bucket_percentage / total_quantity) ;
-      bucket_percentage = 1 - std::pow(1 - bucket_percentage, 5);
-      assert(is_between_inclusive(bucket_percentage, 0.0, 1.0));
-   }
-}
-
-template<Side Side_>
-void HistogramRenderer::DrawBuckets() const {
-   int single_histogram_buckets = GetTotalNumberOfBuckets() / 2;
-   auto [bucket_width, bucket_height] = GetSingleBucketWidthAndHeight();
-   int inner_width = bucket_width - 2;
-
-   auto &bucket_vector = GetCorrectBucketVector<Side_>();
-
-   for (int i = 0; i <= single_histogram_buckets; i++) {
-      auto [bucket_x, bucket_y] = GetBucketPosition(i);
-
-      if constexpr (Side_ == ASK) {
-         bucket_x += HISTOGRAM_SEPARATION_DISTANCE + (bucket_width * single_histogram_buckets);
+         DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_ * buckets_[i], BUCKET_FILL_COLOUR);
       }
+   }
 
-      DrawRectangle(bucket_x, bucket_y, bucket_width, bucket_height, BUCKET_OUTLINE_COLOUR);
+   if (MouseInsideHistogram() && (GetMouseX() <= numberOfBuckets_ * bucketWidth + histogramX_ + histogramWidth_)) {
+      const int mouseX = GetMouseX();
 
-      auto inner_bucket_colour = IsMouseInBucket(i) ? BUCKET_INNER_HIGHLIGHT_COLOUR : BUCKET_INNER_COLOUR;
-      DrawRectangle(bucket_x + 1, bucket_y + 1, inner_width, bucket_height - 2, inner_bucket_colour);
-
-      if (int num_pixels = bucket_vector[i] * (bucket_height - 2); num_pixels > 0) {
-         DrawRectangle(bucket_x, bucket_y + 1, inner_width, num_pixels, GREEN);
-      }
+      int bucket_index = (mouseX - histogramX_) / bucketWidth;
+      const int x = histogramX_ + (bucket_index * bucketWidth);
+      const int y = histogramY_;
+      DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_, BUCKET_INNER_HIGHLIGHT_COLOUR);
    }
 }
 
 void HistogramRenderer::DrawTextOverlay() const {
-   int num_buckets = GetTotalNumberOfBuckets();
-   for (int i = 0; i <= num_buckets; i++) {
-      if (IsMouseInBucket(i)) {
-         int bucket_value = (highestPrice_ - lowestPrice_) / num_buckets / 100;
+   const int mouseX = GetMouseX();
+   const int mouseY = GetMouseY();
+   const int bucketWidth = histogramWidth_ / numberOfBuckets_;
 
-         auto hover_text = std::format("£{} - £{}", i * bucket_value, (i + 1) * bucket_value);
-         DrawText(hover_text.c_str(), GetMouseX(), GetMouseY(), 30, SKYBLUE);
-      }
+   if (MouseInsideHistogram() && (mouseX <= numberOfBuckets_ * bucketWidth + histogramX_ + histogramWidth_)) {
+      const int bucket_index = (mouseX - histogramX_) / bucketWidth;
+      const int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
+      std::string text = std::format("${}-£{}", (bucket_index * bucket_value) / 100,
+                                     ((bucket_index + 1) * bucket_value) / 100);
+
+      DrawText(text.c_str(), mouseX, mouseY, 35, BLUE);
    }
 }
 
-int HistogramRenderer::GetTotalNumberOfBuckets() const {
-   // TODO: This is wrong. The last bucket includes the end of the
-   // Highest price
-   int num_buckets = (highestPrice_ - lowestPrice_) * 2;
-   int max_bucket_width = (windowWidth_ - HISTOGRAM_SEPARATION_DISTANCE) / num_buckets;
-   while (max_bucket_width < 2) {
-      num_buckets /= 10;
-      max_bucket_width = (windowWidth_ - HISTOGRAM_SEPARATION_DISTANCE) / num_buckets;
-   }
-   assert(num_buckets > 1);
-   return num_buckets;
-}
-
-std::pair<int, int> HistogramRenderer::GetSingleBucketWidthAndHeight() const {
-   int bucket_width = (windowWidth_ - HISTOGRAM_SEPARATION_DISTANCE) / GetTotalNumberOfBuckets();
-   int bucket_height = windowHeight_ - HISTOGRAM_VERTICAL_OFFSET;
-
-   assert(bucket_width > 2);
-   return {bucket_width, bucket_height};
-}
-
-std::pair<int, int> HistogramRenderer::GetBucketPosition(int bucket_index) const {
-   int single_bucket_width = GetSingleBucketWidthAndHeight().first;
-
-   int total_buckets = GetTotalNumberOfBuckets();
-   int gap_size = (windowWidth_ - total_buckets * single_bucket_width) / 3;
-
-   int outline_x = single_bucket_width * bucket_index + gap_size;
-
-   return {outline_x, HISTOGRAM_VERTICAL_OFFSET / 2};
-}
-
-bool HistogramRenderer::IsMouseInBucket(int bucket_index) const {
-   int mouse_x = GetMouseX();
-   int mouse_y = GetMouseY();
-
-   auto [bucket_x, bucket_y] = GetBucketPosition(bucket_index);
-   auto [bucket_width, bucket_height] = GetSingleBucketWidthAndHeight();
-
-   return is_between_inclusive(mouse_x, bucket_x, bucket_x + bucket_width) &&
-          is_between_inclusive(mouse_y, bucket_y, bucket_y + bucket_height);
+bool HistogramRenderer::MouseInsideHistogram() const {
+   return is_between_inclusive(GetMouseX(), histogramX_, histogramX_ + histogramWidth_ - 1)
+          && is_between_inclusive(GetMouseY(), histogramY_, histogramY_ + histogramHeight_);
 }
