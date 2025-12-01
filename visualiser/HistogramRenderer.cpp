@@ -1,26 +1,42 @@
 #include "HistogramRenderer.h"
 
+#include <algorithm>
+#include <iostream>
+
 void HistogramRenderer::CalculateBucketFullness() {
    int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
    buckets_.resize(numberOfBuckets_);
 
    int64_t total_quantity = 0;
+   double  max_quantity = 0;
    std::fill(buckets_.begin(), buckets_.end(), 0);
 
-   for (auto order: orderGenerator_()) {
-      const int64_t price = order.GetPrice().GetPrice();
+   for (auto priceAndQuantity: priceAndQuantityGenerator_()) {
+      const int64_t price = priceAndQuantity.price;
+
+      if (!is_between_inclusive(price, lowestPrice_, highestPrice_)) continue;
+
       int bucket_index = price / bucket_value;
       bucket_index = std::clamp(bucket_index, 0, numberOfBuckets_ - 1);
 
-      const auto quantity = order.GetQuantity().GetQuantity();
+      const auto quantity = priceAndQuantity.quantity;
       buckets_.at(bucket_index) += static_cast<double>(quantity);
       total_quantity += quantity;
+      max_quantity = std::max(max_quantity, buckets_.at(bucket_index));
    }
 
    if (total_quantity == 0) return;
 
+   double multiplier = 1;
+   double largest_fraction = max_quantity / total_quantity;
+   if (largest_fraction < 0.7) {
+      multiplier = 0.7 / largest_fraction;
+   }
+
    for (int i = 0; i < numberOfBuckets_; i++) {
       buckets_.at(i) /= static_cast<double>(total_quantity);
+      buckets_.at(i) *= multiplier;
+      assert(buckets_.at(i) <= 1.0);
    }
 }
 
@@ -36,7 +52,13 @@ void HistogramRenderer::DrawBuckets() const {
       if (i < numberOfBuckets_) {
          DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_, BUCKET_BACKGROUND_COLOUR);
 
-         DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_ * buckets_[i], BUCKET_FILL_COLOUR);
+         if (barsGrowDownwards_) {
+            DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_ * buckets_[i], BUCKET_FILL_COLOUR);
+         } else {
+            int distanceFromZero = histogramHeight_ * (1 - buckets_[i]);
+            DrawRectangle(x + 1, y + distanceFromZero, bucketWidth - 1, histogramHeight_ * buckets_[i],
+                          BUCKET_FILL_COLOUR);
+         }
       }
    }
 

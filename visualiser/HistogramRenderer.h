@@ -1,12 +1,14 @@
 #pragma once
 
 #include <functional>
+#include <generator>
 #include <vector>
 
 #include "raylib.h"
-#include "../visualiser_utils.h"
-#include "../limitOrderBook/OrderBook.h"
+#include "visualiser_utils.h"
+#include <OrderBook.h>
 
+class Order;
 using namespace Util;
 
 constexpr Color BUCKET_GRID_COLOUR = RED;
@@ -17,31 +19,26 @@ constexpr Color BUCKET_INNER_HIGHLIGHT_COLOUR = WHITE;
 constexpr int HISTOGRAM_VERTICAL_OFFSET = 70;
 constexpr int HISTOGRAM_SEPARATION_DISTANCE = 50;
 
-struct Dimensions {
-   double x_percentage;
-   double y_percentage;
-   double width_percentage;
-   double height_percentage;
-};
-
+using PriceAndQuantityGenerator = std::function<std::generator<PriceAndQuantity>()>;
 
 class HistogramRenderer {
 public:
    HistogramRenderer(int lowestPrice, int highestPrice, Dimensions dimensions,
-                     std::function<std::generator<Order>()> orderGenerator,
-                     int numberOfBuckets = 100)
+                     const PriceAndQuantityGenerator &priceAndQuantityGenerator,
+                     int numberOfBuckets = 100, bool barsGrowDownwards = true)
       : lowestPrice_(lowestPrice),
         highestPrice_(highestPrice),
         dimensions_(dimensions),
-        orderGenerator_(orderGenerator),
-        numberOfBuckets_(numberOfBuckets) {
+        priceAndQuantityGenerator_(priceAndQuantityGenerator),
+        numberOfBuckets_(numberOfBuckets),
+        barsGrowDownwards_(barsGrowDownwards) {
 
       histogramWidth_ = static_cast<int>(GetScreenWidth() * dimensions_.width_percentage);
       histogramHeight_ = static_cast<int>(GetScreenHeight() * dimensions_.height_percentage);
       buckets_.reserve(static_cast<size_t>(dimensions.width_percentage * histogramWidth_) + 1);
    }
 
-   void Loop() {
+   void Draw() {
       histogramWidth_ = static_cast<int>(GetScreenWidth() * dimensions_.width_percentage);
       histogramHeight_ = static_cast<int>(GetScreenHeight() * dimensions_.height_percentage);
       histogramX_ = static_cast<int>(GetScreenWidth() * dimensions_.x_percentage);
@@ -70,8 +67,9 @@ private:
    int64_t lowestPrice_;
    int64_t highestPrice_;
    Dimensions dimensions_;
-   std::function<std::generator<Order>()> orderGenerator_;
+   PriceAndQuantityGenerator priceAndQuantityGenerator_;
    int numberOfBuckets_;
+   bool barsGrowDownwards_;
 
    std::vector<double> buckets_;
 

@@ -17,6 +17,14 @@ public:
         orderType_(order.GetOrderType()) {
    }
 
+   Price GetPrice() const {
+      return price_;
+   }
+
+   Quantity GetQuantity() const {
+      return quantity_;
+   }
+
 private:
    Uuid orderId_;
    Price price_;
@@ -31,6 +39,16 @@ public:
         order2_(order2, quantityTraded, tradePrice) {
 
       assert(order2.GetSide()!= order1.GetSide());
+   }
+
+   Price GetPrice() const {
+      assert(order1_.GetPrice() == order2_.GetPrice());
+      return order1_.GetPrice();
+   }
+
+   Quantity GetQuantity() const {
+      assert(order1_.GetQuantity() == order2_.GetQuantity());
+      return order2_.GetQuantity();
    }
 
 private:

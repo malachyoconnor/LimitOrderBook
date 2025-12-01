@@ -29,7 +29,9 @@ public:
    void PrintBook();
 
    template<Side Side_>
-   std::generator<Order> orderGenerator();
+   std::generator<Order> WalkOrders();
+
+   std::generator<Trade> WalkTrades();
 
    std::size_t Size() const { return order_map_.size(); };
 
@@ -46,5 +48,5 @@ private:
    std::map<Price, std::list<Order>, std::greater<> > bids_{};
    std::map<Price, std::list<Order>, std::less<> > asks_{};
    std::unordered_map<Uuid, OrderPointer> order_map_{};
-   std::unordered_map<Uuid, std::vector<Trade> > all_trades_{};
+   std::list<Trade> all_trades_{};
 };

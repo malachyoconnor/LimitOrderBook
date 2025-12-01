@@ -32,11 +32,7 @@ void OrderBook::OnMatch(Order &orderToFill, Order &otherOrder) {
    assert(orderToFill.GetSide() != otherOrder.GetSide());
 
    Quantity quantity_traded = std::min(orderToFill.GetQuantity(), otherOrder.GetQuantity());
-
-   Trade resulting_trade = Trade(orderToFill, otherOrder, quantity_traded, otherOrder.GetPrice());
-
-   all_trades_[orderToFill.GetOrderId()].push_back(resulting_trade);
-   all_trades_[otherOrder.GetOrderId()].push_back(resulting_trade);
+   all_trades_.emplace_back(orderToFill, otherOrder, quantity_traded, otherOrder.GetPrice());
 
    orderToFill.fillOrder(quantity_traded);
    otherOrder.fillOrder(quantity_traded);
@@ -152,7 +148,7 @@ bool OrderBook::DeleteOrder(Uuid uuid) {
 }
 
 template<Side Side_>
-std::generator<Order> OrderBook::orderGenerator() {
+std::generator<Order> OrderBook::WalkOrders() {
 
    Book<Side_> &book = getBook<Side_>();
 
@@ -166,8 +162,8 @@ std::generator<Order> OrderBook::orderGenerator() {
 
 void OrderBook::PrintBook() {
 
-   auto bid_gen = orderGenerator<BID>();
-   auto ask_gen = orderGenerator<ASK>();
+   auto bid_gen = WalkOrders<BID>();
+   auto ask_gen = WalkOrders<ASK>();
    auto bid_iter = bid_gen.begin();
    auto ask_iter = ask_gen.begin();
 
@@ -188,5 +184,10 @@ void OrderBook::PrintBook() {
          std::cout << std::format("{:^50}", "") << std::endl;
       }
    }
+}
 
+std::generator<Trade> OrderBook::WalkTrades() {
+   for (const auto &trade: all_trades_) {
+      co_yield trade;
+   }
 }
