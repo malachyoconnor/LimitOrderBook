@@ -7,9 +7,9 @@
 
 class RandomOrderGenerator {
 public:
-   RandomOrderGenerator(int min_price, int max_price, int max_quantity)
+   RandomOrderGenerator(int min_price, int max_price, int average_quantity)
       : price_distribution_((min_price + max_price) / 2, 5000),
-        quantity_distribution_(max_quantity / 2, 30),
+        quantity_distribution_(average_quantity, 5),
         min_price_(min_price),
         max_price_(max_price) {
 

@@ -1,6 +1,7 @@
 #include "HistogramRenderer.h"
 
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 
 void HistogramRenderer::CalculateBucketFullness() {
@@ -8,7 +9,7 @@ void HistogramRenderer::CalculateBucketFullness() {
    buckets_.resize(numberOfBuckets_);
 
    int64_t total_quantity = 0;
-   double  max_quantity = 0;
+   double max_quantity = 0;
    std::fill(buckets_.begin(), buckets_.end(), 0);
 
    for (auto priceAndQuantity: priceAndQuantityGenerator_()) {
@@ -48,16 +49,14 @@ void HistogramRenderer::DrawBuckets() const {
       const int y = histogramY_;
 
       // Start by drawing the bucket grid. If we have 10 buckets, we need to draw 11 lines.
-      DrawLine(x, y, x, y + histogramHeight_, BUCKET_GRID_COLOUR);
+      DrawLine(x, y, x, y + histogramHeight_, GRID_COLOUR);
       if (i < numberOfBuckets_) {
-         DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_, BUCKET_BACKGROUND_COLOUR);
-
          if (barsGrowDownwards_) {
-            DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_ * buckets_[i], BUCKET_FILL_COLOUR);
+            DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_ * buckets_[i], BAR_FILL_COLOUR);
          } else {
             int distanceFromZero = histogramHeight_ * (1 - buckets_[i]);
             DrawRectangle(x + 1, y + distanceFromZero, bucketWidth - 1, histogramHeight_ * buckets_[i],
-                          BUCKET_FILL_COLOUR);
+                          BAR_FILL_COLOUR);
          }
       }
    }
@@ -68,7 +67,7 @@ void HistogramRenderer::DrawBuckets() const {
       int bucket_index = (mouseX - histogramX_) / bucketWidth;
       const int x = histogramX_ + (bucket_index * bucketWidth);
       const int y = histogramY_;
-      DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_, BUCKET_INNER_HIGHLIGHT_COLOUR);
+      DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_, BUCKET_HIGHLIGHT_COLOUR);
    }
 }
 
@@ -76,18 +75,45 @@ void HistogramRenderer::DrawTextOverlay() const {
    const int mouseX = GetMouseX();
    const int mouseY = GetMouseY();
    const int bucketWidth = histogramWidth_ / numberOfBuckets_;
+   const int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
+
+   for (int i = 0; i < numberOfBuckets_; i++) {
+      const int textX = histogramX_ + 4 + (i * bucketWidth);
+      const int textY = histogramY_ + histogramHeight_;
+
+      const int interval_start_price = lowestPrice_ + i * bucket_value;
+      std::string text = std::format("£{}", interval_start_price / 100);
+      DrawTextEx(TEXT_FONT, text.c_str(), Vector2(textX, textY), 18, 1, BAR_TEXT_COLOUR);
+   }
 
    if (MouseInsideHistogram() && (mouseX <= numberOfBuckets_ * bucketWidth + histogramX_ + histogramWidth_)) {
       const int bucket_index = (mouseX - histogramX_) / bucketWidth;
-      const int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
-      std::string text = std::format("${}-£{}", (bucket_index * bucket_value) / 100,
-                                     ((bucket_index + 1) * bucket_value) / 100);
 
-      DrawText(text.c_str(), mouseX, mouseY, 35, BLUE);
+      const int interval_start_price = lowestPrice_ + bucket_index * bucket_value;
+      const int interval_end_price = lowestPrice_ + (bucket_index + 1) * bucket_value;
+      const double percentage = 100 * buckets_.at(bucket_index);
+
+      std::string text = std::format("{:.2}% ${}.{:02}-£{}.{:02}", percentage,
+                                     interval_start_price / 100, interval_start_price % 100,
+                                     interval_end_price / 100, interval_end_price % 100);
+
+      int textX = mouseX + 20;
+      const int textY = mouseY + 20;
+      constexpr int fontSize = 35;
+
+      int boxHeight = 35 + 10;
+      int boxWidth = MeasureText(text.c_str(), 35) + 10;
+
+      if (boxWidth + textX >= GetScreenWidth()) {
+         textX -= boxWidth + textX - GetScreenWidth() + 5;
+      }
+
+      DrawRectangle(textX - 5, textY - 5, boxWidth, boxHeight, HIGHLIGHT_TEXT_BACKGROUND_COLOUR);
+      DrawTextEx(TEXT_FONT, text.c_str(), Vector2(textX, textY), fontSize, 1, HIGHLIGHT_TEXT_COLOUR);
    }
 }
 
 bool HistogramRenderer::MouseInsideHistogram() const {
-   return is_between_inclusive(GetMouseX(), histogramX_, histogramX_ + histogramWidth_ - 1)
+   return is_between_inclusive(GetMouseX(), histogramX_ + 1, histogramX_ + histogramWidth_ - 1)
           && is_between_inclusive(GetMouseY(), histogramY_, histogramY_ + histogramHeight_);
 }
