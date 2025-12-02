@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 enum class OrderType {
    GoodTillCancel, // Sticks around in the orderbook till the bitter end
@@ -16,18 +17,12 @@ namespace OrderTypes {
 
 inline std::string toString(const OrderType orderType) {
    switch (orderType) {
-      case OrderType::GoodTillCancel:
-         return "GoodTillCancel";
-      case OrderType::FillAndKill:
-         return "FillAndKill";
-      case OrderType::FillOrKill:
-         return "FillOrKill";
+      case OrderType::GoodTillCancel: return "GoodTillCancel";
+      case OrderType::FillAndKill: return "FillAndKill";
+      case OrderType::FillOrKill: return "FillOrKill";
       // TODO:
-      //case OrderType::GoodForDay:
-      //   return "GoodForDay";
-      case OrderType::Market:
-         return "Market";
-      default:
-         assert(false);
+      //case OrderType::GoodForDay:  return "GoodForDay";
+      case OrderType::Market: return "Market";
+      default: std::unreachable();
    }
 }

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <functional>
 #include <generator>
+#include <utility>
 #include <vector>
 
 #include "raylib.h"
@@ -27,14 +28,15 @@ constexpr int HISTOGRAM_SEPARATION_DISTANCE = 50;
 
 class HistogramRenderer {
 public:
-   HistogramRenderer(int lowestPrice, int highestPrice, Dimensions dimensions,
-                     const PriceAndQuantityGenerator &priceAndQuantityGenerator,
-                     int numberOfBuckets = 20, bool barsGrowDownwards = true)
+   explicit HistogramRenderer(int lowestPrice, int highestPrice, Dimensions dimensions,
+                              PriceAndQuantityGenerator priceAndQuantityGenerator,
+                              int numberOfBuckets = 20, std::string title = "", bool barsGrowDownwards = true)
       : lowestPrice_(lowestPrice),
         highestPrice_(highestPrice),
         dimensions_(dimensions),
-        priceAndQuantityGenerator_(priceAndQuantityGenerator),
+        priceAndQuantityGenerator_(std::move(priceAndQuantityGenerator)),
         numberOfBuckets_(numberOfBuckets),
+        title_(std::move(title)),
         barsGrowDownwards_(barsGrowDownwards) {
 
       histogramWidth_ = static_cast<int>(GetScreenWidth() * dimensions_.width_percentage);
@@ -53,14 +55,15 @@ public:
       if (!WindowShouldClose()) {
          CalculateBucketFullness();
          DrawBuckets();
-
          DrawTextOverlay();
+         DrawTitle();
       }
    }
 
    void CalculateBucketFullness();
    void DrawBuckets() const;
    void DrawTextOverlay() const;
+   void DrawTitle() const;
 
    int GetHistogramWidth() const { return histogramWidth_; }
 
@@ -72,6 +75,7 @@ private:
    Dimensions dimensions_;
    PriceAndQuantityGenerator priceAndQuantityGenerator_;
    int numberOfBuckets_;
+   std::string title_;
    bool barsGrowDownwards_;
 
    std::vector<double> buckets_;

@@ -10,13 +10,11 @@
 
 #include "Trade.h"
 
-using enum Side;
-using enum OrderType;
 using OrderPointer = std::list<Order>::iterator;
 
 template<Side Side_>
 using Book =
-std::map<Price, std::list<Order>, std::conditional_t<Side_ == BID, std::greater<>, std::less<> > >;
+std::map<Price, std::list<Order>, std::conditional_t<Side_ == Side::BID, std::greater<>, std::less<> > >;
 
 class OrderBook {
 public:
@@ -37,7 +35,7 @@ public:
 
 private:
    template<Side Side_>
-   Book<Side_> &getBook();
+   Book<Side_> &GetBook();
 
    template<Side Side_>
    bool CanBeFilled(Order orderToFill);

@@ -6,23 +6,23 @@
 
 #include "Order.h"
 
+using enum Side;
+using enum OrderType;
+
 template<Side Side_>
-Book<Side_> &OrderBook::getBook() {
+Book<Side_> &OrderBook::GetBook() {
    if constexpr (Side_ == ASK) return asks_;
    else return bids_;
 }
 
-// TODO: Yuck, disgusting. Not handling cleaning up well - resulting in this unholy mess.
 std::optional<Price> OrderBook::GetWorstPrice(const Order &order) const {
    if (order.GetSide() == ASK) {
-      if (bids_.empty()) return std::nullopt;
-      for (auto iter = bids_.begin(); iter != bids_.end(); ++iter) {
-         if (!iter->second.empty()) return iter->second.begin()->GetPrice();
+      for (const auto &level: bids_ | std::views::values) {
+         if (!level.empty()) return level.begin()->GetPrice();
       }
    } else {
-      if (asks_.empty()) return std::nullopt;
-      for (auto iter = bids_.begin(); iter != bids_.end(); ++iter) {
-         if (!iter->second.empty()) return iter->second.begin()->GetPrice();
+      for (const auto &level: asks_ | std::views::values) {
+         if (!level.empty()) return level.begin()->GetPrice();
       }
    }
    return std::nullopt;
@@ -43,20 +43,20 @@ bool OrderBook::AddOrder(Order order) {
    if (order_map_.contains(order.GetOrderId())) return false;
 
    if (order.GetOrderType() == Market) {
-      if (auto marketPrice = GetWorstPrice(order); marketPrice.has_value()) {
-         assert(marketPrice.value().GetPrice() != 0);
-         order = order.ToFillAndKill(marketPrice.value());
-      } else {
-         return false; // We shouldn't add a market order if there's no-one to take the other side.
-      }
+      auto marketPrice = GetWorstPrice(order);
+      if (!marketPrice) return false; // No liquidity
+
+      order.ToFillAndKill(*marketPrice);
    }
 
    if (order.GetSide() == ASK) TryFill<ASK>(order);
-   else if (order.GetSide() == BID) TryFill<BID>(order);
+   else TryFill<BID>(order);
 
-   if (order.isFilled()) return true;
-   if (order.GetOrderType() == FillAndKill) return false;
-   if (order.GetOrderType() == FillOrKill) return false;
+   if (order.IsFilled()) return true;
+   if (order.GetOrderType() == FillAndKill ||
+       order.GetOrderType() == FillOrKill) {
+      return false;
+   }
 
    if (order.GetSide() == ASK) {
       asks_[order.GetPrice()].push_back(order);
@@ -72,32 +72,28 @@ bool OrderBook::AddOrder(Order order) {
 template<Side Side_>
 bool OrderBook::TryFill(Order &orderToFill) {
 
-   auto &book = getBook<otherSide(Side_)>();
-
+   auto &book = GetBook<otherSide(Side_)>();
    if (orderToFill.GetOrderType() == FillOrKill && !CanBeFilled<Side_>(orderToFill)) return false;
 
-
    for (auto book_iter = book.begin(); book_iter != book.end();) {
-
       auto &[price, level] = *book_iter;
 
       if (orderToFill.GetOrderType() != Market) {
-         if (Side_ == ASK && price < orderToFill.GetPrice()) return orderToFill.isFilled();
-         if (Side_ == BID && price > orderToFill.GetPrice()) return orderToFill.isFilled();
+         if (Side_ == ASK && price < orderToFill.GetPrice()) return orderToFill.IsFilled();
+         if (Side_ == BID && price > orderToFill.GetPrice()) return orderToFill.IsFilled();
       }
 
-      for (auto iter = level.begin(); iter != level.end();) {
-         Order &other_order = *iter;
-
+      for (auto level_iter = level.begin(); level_iter != level.end();) {
+         Order &other_order = *level_iter;
          OnMatch(orderToFill, other_order);
 
-         if (other_order.isFilled()) {
+         if (other_order.IsFilled()) {
             order_map_.erase(other_order.GetOrderId());
-            level.erase(iter++);
+            level.erase(level_iter++);
          } else {
-            ++iter;
+            ++level_iter;
          }
-         if (orderToFill.isFilled()) return true;
+         if (orderToFill.IsFilled()) return true;
       }
 
       if (level.empty()) {
@@ -106,17 +102,16 @@ bool OrderBook::TryFill(Order &orderToFill) {
          ++book_iter;
       }
    }
-
-   return orderToFill.isFilled();
+   return orderToFill.IsFilled();
 }
 
 template<Side Side_>
 bool OrderBook::CanBeFilled(Order orderToFill) {
-   for (auto &book = getBook<otherSide(Side_)>(); auto &[price, level]: book) {
+   for (auto &book = GetBook<otherSide(Side_)>(); auto &[price, level]: book) {
 
       if (orderToFill.GetOrderType() != Market) {
-         if (Side_ == ASK && price < orderToFill.GetPrice()) return orderToFill.isFilled();
-         if (Side_ == BID && price > orderToFill.GetPrice()) return orderToFill.isFilled();
+         if (Side_ == ASK && price < orderToFill.GetPrice()) return orderToFill.IsFilled();
+         if (Side_ == BID && price > orderToFill.GetPrice()) return orderToFill.IsFilled();
       }
 
       for (auto iter = level.begin(); iter != level.end();) {
@@ -124,12 +119,12 @@ bool OrderBook::CanBeFilled(Order orderToFill) {
          Quantity quantity_traded = std::min(orderToFill.GetQuantity(), other_order.GetQuantity());
 
          orderToFill.fillOrder(quantity_traded);
-         if (orderToFill.isFilled()) return true;
+         if (orderToFill.IsFilled()) return true;
          ++iter;
       }
    }
 
-   return orderToFill.isFilled();
+   return orderToFill.IsFilled();
 }
 
 bool OrderBook::DeleteOrder(Uuid uuid) {
@@ -150,7 +145,7 @@ bool OrderBook::DeleteOrder(Uuid uuid) {
 template<Side Side_>
 std::generator<Order> OrderBook::WalkOrders() {
 
-   Book<Side_> &book = getBook<Side_>();
+   Book<Side_> &book = GetBook<Side_>();
 
    for (auto &level: book | std::views::values) {
       for (auto &order: level) {

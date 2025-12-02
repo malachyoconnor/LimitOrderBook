@@ -67,7 +67,7 @@ int main() {
    OrderBook book = OrderBook();
 
    std::function<std::generator<PriceAndQuantity>()> askGenerator = [&book]()-> std::generator<PriceAndQuantity> {
-      for (const auto &order: book.WalkOrders<ASK>()) {
+      for (const auto &order: book.WalkOrders<Side::ASK>()) {
          co_yield PriceAndQuantity{
             order.GetPrice().GetPrice(),
             order.GetQuantity().GetQuantity()
@@ -75,7 +75,7 @@ int main() {
       }
    };
    std::function<std::generator<PriceAndQuantity>()> bidGenerator = [&book]()-> std::generator<PriceAndQuantity> {
-      for (const auto &order: book.WalkOrders<BID>()) {
+      for (const auto &order: book.WalkOrders<Side::BID>()) {
          co_yield PriceAndQuantity{
             order.GetPrice().GetPrice(),
             order.GetQuantity().GetQuantity()
@@ -96,15 +96,15 @@ int main() {
 
    auto askHistogram = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE,
                                          Dimensions{0.51, 0.05, 0.48, 0.5},
-                                         askGenerator, 15);
+                                         askGenerator, 15, "ASKS", true);
 
    auto bidHistogram = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE,
                                          Dimensions{0.0, 0.05, 0.48, 0.5},
-                                         bidGenerator, 15);
+                                         bidGenerator, 15, "BIDS", true);
 
    auto tradeHistogram = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE,
                                            Dimensions{0.40, 0.65, 0.20, 0.2},
-                                           tradeGenerator, 10, false);
+                                           tradeGenerator, 10,  "TRADE PRICES", false);
 
    for (int i = 0; i < NUM_ORDERS_TO_ADD; i++) {
       Order randomOrder = randomOrderGenerator.GetRandomGoodTillCancelOrder();

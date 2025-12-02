@@ -11,10 +11,8 @@ enum class Side {
 
 inline std::string toString(const Side side) {
    switch (side) {
-      case Side::BID:
-         return "BID";
-      case Side::ASK:
-         return "ASK";
+      case Side::BID: return "BID";
+      case Side::ASK: return "ASK";
       default: assert(false);
    }
 }
@@ -28,31 +26,32 @@ constexpr Side otherSide(Side side) {
 
 class Order {
 public:
-   Order(Uuid orderId, Price price, Quantity quantity, Side side, OrderType orderType) : orderId_(orderId),
-      price_(price),
-      quantity_(quantity),
-      side_(side),
-      orderType_(orderType) {
+   static Order NewMarketOrder(Uuid orderId, Quantity quantity, Side side) {
+      return {orderId, Price(0), quantity, side, OrderType::Market};
+   }
+
+   static Order NewOrder(Uuid orderId, Price price, Quantity quantity, Side side, OrderType orderType) {
       assert(orderType != OrderType::Market);
+      return {orderId, price, quantity, side, orderType};
    }
 
-   Order(Uuid orderId, Quantity quantity, Side side, OrderType orderType)
-      : orderId_(orderId),
-        price_(0),
-        quantity_(quantity),
-        side_(side),
-        orderType_(orderType) {
-      assert(orderType == OrderType::Market);
-   }
-
-
+   [[nodiscard]]
    Uuid GetOrderId() const { return orderId_; }
+
+   [[nodiscard]]
    Price GetPrice() const { return price_; }
+
+   [[nodiscard]]
    Quantity GetQuantity() const { return quantity_; }
+
+   [[nodiscard]]
    Side GetSide() const { return side_; }
+
+   [[nodiscard]]
    OrderType GetOrderType() const { return orderType_; }
 
-   bool isFilled() const { return GetQuantity() == ZERO; }
+   [[nodiscard]]
+   bool IsFilled() const { return GetQuantity() == ZERO; }
 
    Order ToFillAndKill(Price price) {
       assert(orderType_ == OrderType::Market);
@@ -80,6 +79,22 @@ public:
    }
 
 private:
+   Order(Uuid orderId, Price price, Quantity quantity, Side side, OrderType orderType) : orderId_(orderId),
+      price_(price),
+      quantity_(quantity),
+      side_(side),
+      orderType_(orderType) {
+   }
+
+   Order(Uuid orderId, Quantity quantity, Side side, OrderType orderType)
+      : orderId_(orderId),
+        price_(0),
+        quantity_(quantity),
+        side_(side),
+        orderType_(orderType) {
+      assert(orderType == OrderType::Market);
+   }
+
    Uuid orderId_;
    Price price_;
    Quantity quantity_;

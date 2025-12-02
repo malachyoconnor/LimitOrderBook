@@ -5,7 +5,7 @@
 #include <iostream>
 
 void HistogramRenderer::CalculateBucketFullness() {
-   int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
+   int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
    buckets_.resize(numberOfBuckets_);
 
    int64_t total_quantity = 0;
@@ -44,6 +44,10 @@ void HistogramRenderer::CalculateBucketFullness() {
 void HistogramRenderer::DrawBuckets() const {
    const int bucketWidth = histogramWidth_ / numberOfBuckets_;
 
+   DrawLine(histogramX_, histogramY_, histogramX_ + histogramWidth_ - 1, histogramY_, GRID_COLOUR);
+   DrawLine(histogramX_, histogramY_ + histogramHeight_ - 1, histogramX_ + histogramWidth_ - 1,
+            histogramY_ + histogramHeight_ - 1, GRID_COLOUR);
+
    for (int i = 0; i <= numberOfBuckets_; i++) {
       const int x = histogramX_ + (i * bucketWidth);
       const int y = histogramY_;
@@ -75,15 +79,18 @@ void HistogramRenderer::DrawTextOverlay() const {
    const int mouseX = GetMouseX();
    const int mouseY = GetMouseY();
    const int bucketWidth = histogramWidth_ / numberOfBuckets_;
-   const int bucket_value = (highestPrice_ - lowestPrice_) / numberOfBuckets_;
+   const int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
 
    for (int i = 0; i < numberOfBuckets_; i++) {
       const int textX = histogramX_ + 4 + (i * bucketWidth);
       const int textY = histogramY_ + histogramHeight_;
 
       const int interval_start_price = lowestPrice_ + i * bucket_value;
-      std::string text = std::format("£{}", interval_start_price / 100);
-      DrawTextEx(TEXT_FONT, text.c_str(), Vector2(textX, textY), 18, 1, BAR_TEXT_COLOUR);
+      std::string text = std::format("£{} ", interval_start_price / 100);
+
+      int offset = (bucketWidth - MeasureText(text.c_str(), 18)) / 2;
+
+      DrawTextEx(TEXT_FONT, text.c_str(), Vector2(textX + offset, textY), 18, 1, BAR_TEXT_COLOUR);
    }
 
    if (MouseInsideHistogram() && (mouseX <= numberOfBuckets_ * bucketWidth + histogramX_ + histogramWidth_)) {
@@ -111,6 +118,18 @@ void HistogramRenderer::DrawTextOverlay() const {
       DrawRectangle(textX - 5, textY - 5, boxWidth, boxHeight, HIGHLIGHT_TEXT_BACKGROUND_COLOUR);
       DrawTextEx(TEXT_FONT, text.c_str(), Vector2(textX, textY), fontSize, 1, HIGHLIGHT_TEXT_COLOUR);
    }
+}
+
+void HistogramRenderer::DrawTitle() const {
+   if (title_.empty()) return;
+
+   constexpr int fontSize = 35;
+   int titleSize = MeasureText(title_.c_str(), fontSize);
+
+   int titleX = histogramX_ + (histogramWidth_ - titleSize) / 2;
+   int titleY = histogramY_ - fontSize;
+
+   DrawTextEx(TEXT_FONT, title_.c_str(), Vector2(titleX, titleY), fontSize, 5, BAR_FILL_COLOUR);
 }
 
 bool HistogramRenderer::MouseInsideHistogram() const {

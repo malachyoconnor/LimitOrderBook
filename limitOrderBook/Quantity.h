@@ -6,26 +6,25 @@
 #include "typedefs.h"
 
 class Quantity {
-
 public:
-    explicit Quantity(int64_t quantity)
-    : quantity_(quantity) {}
+   constexpr explicit Quantity(int64_t quantity)
+      : quantity_(quantity) {
+   }
 
-    auto operator<=>(const Quantity& other) const = default;
+   auto operator<=>(const Quantity &other) const = default;
 
-    Quantity& fill(const Quantity& other) {
-        assert(quantity_ >= other.quantity_);
+   Quantity &fill(const Quantity &other) {
+      assert(quantity_ >= other.quantity_);
 
-        quantity_ -= other.quantity_;
-        return *this;
-    }
+      quantity_ -= other.quantity_;
+      return *this;
+   }
 
    int64_t GetQuantity() const { return quantity_; }
 
 private:
-    int64_t quantity_;
-
+   int64_t quantity_;
 };
 
 
-inline const Quantity ZERO = Quantity(0);
+inline constexpr Quantity ZERO = Quantity(0);
