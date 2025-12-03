@@ -11,6 +11,7 @@
 #include "Trade.h"
 
 using OrderPointer = std::list<Order>::iterator;
+using TradeIterator = std::list<Trade>::iterator;
 
 template<Side Side_>
 using Book =
@@ -27,15 +28,20 @@ public:
    void PrintBook();
 
    template<Side Side_>
-   std::generator<Order> WalkOrders();
+   std::generator<Order> WalkOrders() const;
 
-   std::generator<Trade> WalkTrades();
+   std::generator<Trade> WalkTrades() const;
+
+   std::generator<Trade> WalkLatestTrades() const;
 
    std::size_t Size() const { return order_map_.size(); };
 
 private:
    template<Side Side_>
    Book<Side_> &GetBook();
+
+   template<Side Side_>
+   const Book<Side_> &GetConstBook() const;
 
    template<Side Side_>
    bool CanBeFilled(Order orderToFill);
@@ -47,4 +53,5 @@ private:
    std::map<Price, std::list<Order>, std::less<> > asks_{};
    std::unordered_map<Uuid, OrderPointer> order_map_{};
    std::list<Trade> all_trades_{};
+   TradeIterator newestTrades = all_trades_.begin();
 };

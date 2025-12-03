@@ -29,21 +29,19 @@ constexpr int HISTOGRAM_SEPARATION_DISTANCE = 50;
 class HistogramRenderer {
 public:
    explicit HistogramRenderer(int lowestPrice, int highestPrice, Dimensions dimensions,
-                              PriceAndQuantityGenerator priceAndQuantityGenerator,
                               int numberOfBuckets = 20, std::string title = "", bool barsGrowDownwards = true)
       : lowestPrice_(lowestPrice),
         highestPrice_(highestPrice),
         dimensions_(dimensions),
-        priceAndQuantityGenerator_(std::move(priceAndQuantityGenerator)),
         numberOfBuckets_(numberOfBuckets),
         title_(std::move(title)),
         barsGrowDownwards_(barsGrowDownwards) {
 
+      buckets_.resize(numberOfBuckets);
       histogramWidth_ = static_cast<int>(GetScreenWidth() * dimensions_.width_percentage);
       histogramHeight_ = static_cast<int>(GetScreenHeight() * dimensions_.height_percentage);
       histogramX_ = static_cast<int>(GetScreenWidth() * dimensions_.x_percentage);
       histogramY_ = static_cast<int>(GetScreenHeight() * dimensions_.y_percentage);
-      buckets_.reserve(static_cast<size_t>(dimensions.width_percentage * histogramWidth_) + 1);
    }
 
    void Draw() {
@@ -53,35 +51,37 @@ public:
       histogramX_ = static_cast<int>(GetScreenWidth() * dimensions_.x_percentage);
       histogramY_ = static_cast<int>(GetScreenHeight() * dimensions_.y_percentage);
       if (!WindowShouldClose()) {
-         CalculateBucketFullness();
          DrawBuckets();
          DrawTextOverlay();
          DrawTitle();
       }
    }
 
-   void CalculateBucketFullness();
-   void DrawBuckets() const;
-   void DrawTextOverlay() const;
-   void DrawTitle() const;
+   void AddPriceAndQuantity(const PriceAndQuantity &priceAndQuantity);
+   void RemovePriceAndQuantity(const PriceAndQuantity &priceAndQuantity);
 
    int GetHistogramWidth() const { return histogramWidth_; }
 
 private:
+   void DrawBuckets() const;
+   void DrawTextOverlay() const;
+   void DrawTitle() const;
    bool MouseInsideHistogram() const;
+   int GetBucketIndexFromPrice(int64_t price) const;
 
    int64_t lowestPrice_;
    int64_t highestPrice_;
    Dimensions dimensions_;
-   PriceAndQuantityGenerator priceAndQuantityGenerator_;
    int numberOfBuckets_;
    std::string title_;
    bool barsGrowDownwards_;
 
-   std::vector<double> buckets_;
+   std::vector<int64_t> buckets_;
 
    int histogramWidth_;
    int histogramHeight_;
    int histogramX_;
    int histogramY_;
+   int64_t totalQuantity_;
+   int64_t largestSingleQuantity_;
 };

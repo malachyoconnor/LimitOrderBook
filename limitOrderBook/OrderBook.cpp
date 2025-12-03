@@ -15,6 +15,12 @@ Book<Side_> &OrderBook::GetBook() {
    else return bids_;
 }
 
+template<Side Side_>
+const Book<Side_> &OrderBook::GetConstBook() const {
+   if constexpr (Side_ == ASK) return asks_;
+   else return bids_;
+}
+
 std::optional<Price> OrderBook::GetWorstPrice(const Order &order) const {
    if (order.GetSide() == ASK) {
       for (const auto &level: bids_ | std::views::values) {
@@ -49,8 +55,14 @@ bool OrderBook::AddOrder(Order order) {
       order.ToFillAndKill(*marketPrice);
    }
 
+   // Reset the newestTrades iterator to point to one element before any new trades will end up
+   newestTrades = all_trades_.empty() ? all_trades_.end() : --all_trades_.end();
+
    if (order.GetSide() == ASK) TryFill<ASK>(order);
    else TryFill<BID>(order);
+
+   // Step the iterator onto where the latest trade (or all_trades_.end()) will be
+   if (!all_trades_.empty()) ++newestTrades;
 
    if (order.IsFilled()) return true;
    if (order.GetOrderType() == FillAndKill ||
@@ -143,9 +155,9 @@ bool OrderBook::DeleteOrder(Uuid uuid) {
 }
 
 template<Side Side_>
-std::generator<Order> OrderBook::WalkOrders() {
+std::generator<Order> OrderBook::WalkOrders() const {
 
-   Book<Side_> &book = GetBook<Side_>();
+   const Book<Side_> &book = GetConstBook<Side_>();
 
    for (auto &level: book | std::views::values) {
       for (auto &order: level) {
@@ -181,8 +193,14 @@ void OrderBook::PrintBook() {
    }
 }
 
-std::generator<Trade> OrderBook::WalkTrades() {
+std::generator<Trade> OrderBook::WalkTrades() const {
    for (const auto &trade: all_trades_) {
       co_yield trade;
+   }
+}
+
+std::generator<Trade> OrderBook::WalkLatestTrades() const {
+   for (auto tradeIter = newestTrades; tradeIter != all_trades_.end(); ++tradeIter) {
+      co_yield *tradeIter;
    }
 }

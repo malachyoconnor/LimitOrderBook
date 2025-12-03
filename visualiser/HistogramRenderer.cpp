@@ -3,39 +3,41 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <numeric>
 
-void HistogramRenderer::CalculateBucketFullness() {
-   const int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
-   buckets_.resize(numberOfBuckets_);
+int HistogramRenderer::GetBucketIndexFromPrice(const int64_t price) const {
+   if (!is_between_inclusive(price, lowestPrice_, highestPrice_))
+      return -1;
+   static int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
 
-   int64_t total_quantity = 0;
-   double max_quantity = 0;
-   std::ranges::fill(buckets_, 0);
+   int bucket_index = static_cast<int>(price - lowestPrice_) / bucket_value;
+   bucket_index = std::clamp(bucket_index, 0, numberOfBuckets_ - 1);
 
-   for (const auto &[price, quantity]: priceAndQuantityGenerator_()) {
-      if (!is_between_inclusive(price, lowestPrice_, highestPrice_)) continue;
+   return bucket_index;
+}
 
-      int bucket_index = price / bucket_value;
-      bucket_index = std::clamp(bucket_index, 0, numberOfBuckets_ - 1);
+void HistogramRenderer::AddPriceAndQuantity(const PriceAndQuantity &priceAndQuantity) {
+   const int bucket_index = GetBucketIndexFromPrice(priceAndQuantity.price);
+   assert(bucket_index != -1);
 
-      buckets_.at(bucket_index) += static_cast<double>(quantity);
-      total_quantity += quantity;
-      max_quantity = std::max(max_quantity, buckets_.at(bucket_index));
-   }
+   buckets_[bucket_index] += priceAndQuantity.quantity;
+   totalQuantity_ += priceAndQuantity.quantity;
+   largestSingleQuantity_ = std::max(largestSingleQuantity_, buckets_[bucket_index]);
 
-   if (total_quantity == 0) return;
+   assert(largestSingleQuantity_ >= 0);
+   assert(totalQuantity_ >= 0);
+}
 
-   double multiplier = 1;
-   const double largest_fraction = max_quantity / total_quantity;
-   if (largest_fraction < 0.7) {
-      multiplier = 0.7 / largest_fraction;
-   }
+void HistogramRenderer::RemovePriceAndQuantity(const PriceAndQuantity &priceAndQuantity) {
+   const int bucket_index = GetBucketIndexFromPrice(priceAndQuantity.price);
+   assert(bucket_index != -1);
 
-   for (int i = 0; i < numberOfBuckets_; i++) {
-      buckets_.at(i) /= static_cast<double>(total_quantity);
-      buckets_.at(i) *= multiplier;
-      assert(buckets_.at(i) <= 1.0);
-   }
+   buckets_[bucket_index] -= priceAndQuantity.quantity;
+   totalQuantity_ -= priceAndQuantity.quantity;
+   largestSingleQuantity_ = std::reduce(buckets_.begin(), buckets_.end(), buckets_[0], std::ranges::max);
+
+   assert(largestSingleQuantity_ >= 0);
+   assert(totalQuantity_ >= 0);
 }
 
 void HistogramRenderer::DrawBuckets() const {
@@ -51,13 +53,22 @@ void HistogramRenderer::DrawBuckets() const {
 
       // Start by drawing the bucket grid. If we have 10 buckets, we need to draw 11 lines.
       DrawLine(x, y, x, y + histogramHeight_, GRID_COLOUR);
-      if (i < numberOfBuckets_) {
-         if (barsGrowDownwards_) {
-            DrawRectangle(x + 1, y, bucketWidth - 1, histogramHeight_ * buckets_[i], BAR_FILL_COLOUR);
-         } else {
-            int distanceFromZero = histogramHeight_ * (1 - buckets_[i]);
-            DrawRectangle(x + 1, y + distanceFromZero, bucketWidth - 1, histogramHeight_ * buckets_[i],
-                          BAR_FILL_COLOUR);
+
+      if (totalQuantity_ > 0 && largestSingleQuantity_ > 0) {
+         const double barHeightFrac = static_cast<double>(buckets_[i]) / static_cast<double>(totalQuantity_);
+         int barHeight = barHeightFrac * histogramHeight_;
+
+         if (static_cast<double>(largestSingleQuantity_) / static_cast<double>(totalQuantity_) < 0.7) {
+            barHeight *= 0.7 / (static_cast<double>(largestSingleQuantity_) / static_cast<double>(totalQuantity_));
+         }
+
+         if (i < numberOfBuckets_) {
+            if (barsGrowDownwards_) {
+               DrawRectangle(x + 1, y, bucketWidth - 1, barHeight, BAR_FILL_COLOUR);
+            } else {
+               int distanceFromZero = histogramHeight_ - barHeight;
+               DrawRectangle(x + 1, y + distanceFromZero, bucketWidth - 1, barHeight, BAR_FILL_COLOUR);
+            }
          }
       }
    }
@@ -95,7 +106,7 @@ void HistogramRenderer::DrawTextOverlay() const {
 
       const int64_t interval_start_price = lowestPrice_ + bucket_index * bucket_value;
       const int64_t interval_end_price = lowestPrice_ + (bucket_index + 1) * bucket_value;
-      const double percentage = 100 * buckets_.at(bucket_index);
+      const double percentage = (100.0 * buckets_.at(bucket_index)) / totalQuantity_;
 
       const std::string text = std::format("{:.2}% ${}.{:02}-£{}.{:02}", percentage,
                                            interval_start_price / 100, interval_start_price % 100,

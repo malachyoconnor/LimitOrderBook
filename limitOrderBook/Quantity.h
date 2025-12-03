@@ -22,6 +22,8 @@ public:
 
    int64_t GetQuantity() const { return quantity_; }
 
+   explicit operator int64_t() const { return quantity_; }
+
 private:
    int64_t quantity_;
 };

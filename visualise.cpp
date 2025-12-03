@@ -1,4 +1,5 @@
 #include <functional>
+#include <iostream>
 #include <queue>
 
 #include "HistogramRenderer.h"
@@ -66,23 +67,6 @@ int main() {
 
    OrderBook book = OrderBook();
 
-   std::function<std::generator<PriceAndQuantity>()> askGenerator = [&book]()-> std::generator<PriceAndQuantity> {
-      for (const auto &order: book.WalkOrders<Side::ASK>()) {
-         co_yield PriceAndQuantity{
-            order.GetPrice().GetPrice(),
-            order.GetQuantity().GetQuantity()
-         };
-      }
-   };
-   std::function<std::generator<PriceAndQuantity>()> bidGenerator = [&book]()-> std::generator<PriceAndQuantity> {
-      for (const auto &order: book.WalkOrders<Side::BID>()) {
-         co_yield PriceAndQuantity{
-            order.GetPrice().GetPrice(),
-            order.GetQuantity().GetQuantity()
-         };
-      }
-   };
-
    std::function<std::generator<PriceAndQuantity>()> tradeGenerator = [&book]()-> std::generator<PriceAndQuantity> {
       for (const Trade &trade: book.WalkTrades()) {
          co_yield PriceAndQuantity{
@@ -96,19 +80,51 @@ int main() {
 
    auto askHistogram = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE,
                                          Dimensions{0.51, 0.05, 0.48, 0.5},
-                                         askGenerator, 15, "ASKS", true);
+                                         15, "ASKS", true);
 
    auto bidHistogram = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE,
                                          Dimensions{0.0, 0.05, 0.48, 0.5},
-                                         bidGenerator, 15, "BIDS", true);
+                                         15, "BIDS", true);
 
    auto tradeHistogram = HistogramRenderer(LOWEST_PRICE, HIGHEST_PRICE,
                                            Dimensions{0.40, 0.65, 0.20, 0.2},
-                                           tradeGenerator, 10,  "TRADE PRICES", false);
+                                           10, "TRADE PRICES", false);
+
 
    for (int i = 0; i < NUM_ORDERS_TO_ADD; i++) {
-      Order randomOrder = randomOrderGenerator.GetRandomGoodTillCancelOrder();
+      const Order randomOrder = randomOrderGenerator.GetRandomGoodTillCancelOrder();
       book.AddOrder(randomOrder);
+
+      PriceAndQuantity newPriceAndQuantity = {
+         static_cast<int64_t>(randomOrder.GetPrice()),
+         static_cast<int64_t>(randomOrder.GetQuantity())
+      };
+
+      if (randomOrder.GetSide() == Side::ASK) {
+         askHistogram.AddPriceAndQuantity(newPriceAndQuantity);
+      } else {
+         bidHistogram.AddPriceAndQuantity(newPriceAndQuantity);
+      }
+
+      for (const auto &trade: book.WalkLatestTrades()) {
+
+         askHistogram.RemovePriceAndQuantity({
+               static_cast<int64_t>(trade.GetOriginalAskPrice()),
+               static_cast<int64_t>(trade.GetQuantity())
+            }
+         );
+
+         bidHistogram.RemovePriceAndQuantity({
+               static_cast<int64_t>(trade.GetOriginalBidPrice()),
+               static_cast<int64_t>(trade.GetQuantity())
+            }
+         );
+
+         tradeHistogram.AddPriceAndQuantity({
+            static_cast<int64_t>(trade.GetPrice()),
+            static_cast<int64_t>(trade.GetQuantity())
+         });
+      }
 
       DrawHistograms(askHistogram, bidHistogram, tradeHistogram);
       DrawQuartilesText(tradeGenerator);
@@ -116,7 +132,8 @@ int main() {
 
    book.PrintBook();
 
-   while (!WindowShouldClose()) {
+   while
+   (!WindowShouldClose()) {
       DrawHistograms(askHistogram, bidHistogram, tradeHistogram);
       DrawQuartilesText(tradeGenerator);
    }
