@@ -10,7 +10,7 @@ class Order;
 
 class TradeInfo {
 public:
-   explicit TradeInfo(Order &order, Quantity &quantityTraded, Price &price)
+   explicit TradeInfo(const Order &order, const Quantity &quantityTraded, const Price &price)
       : orderId_(order.GetOrderId()),
         price_(price),
         quantity_(quantityTraded),

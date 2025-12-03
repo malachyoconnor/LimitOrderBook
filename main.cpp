@@ -1,16 +1,16 @@
 #include <iostream>
 #include "OrderBook.h"
-#include "libs/raylib.h"
+#include "limitOrderBook/OrderType.h"
 
 int main() {
 
    OrderBook book{};
 
-   std::vector<Order> test_orders{
-      Order(1, Price(10), Quantity(10), BID, GoodTillCancel),
-      Order(2, Price(12), Quantity(12), ASK, GoodTillCancel),
-      Order(3, Quantity(8), ASK, Market),
-      Order(3, Price(3), Quantity(3), ASK, FillOrKill),
+   const std::vector<Order> test_orders{
+      Order::NewOrder(1, Price(10), Quantity(10), Side::BID, OrderType::GoodTillCancel),
+      Order::NewOrder(2, Price(12), Quantity(12), Side::ASK, OrderType::GoodTillCancel),
+      Order::NewMarketOrder(3, Quantity(8), Side::ASK),
+      Order::NewOrder(4, Price(3), Quantity(3), Side::ASK, OrderType::FillOrKill),
    };
 
    for (auto &order: test_orders) {

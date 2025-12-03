@@ -22,7 +22,7 @@ void DrawHistograms(HistogramRenderer &askHistogram, HistogramRenderer &bidHisto
    }
 }
 
-void DrawQuartilesText(PriceAndQuantityGenerator &tradeGenerator) {
+void DrawQuartilesText(const PriceAndQuantityGenerator &tradeGenerator) {
    std::vector<int64_t> allPrices{};
 
    for (const auto [price, _]: tradeGenerator()) {

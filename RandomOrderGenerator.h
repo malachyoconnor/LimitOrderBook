@@ -19,7 +19,7 @@ public:
       std::random_device rd;
       static auto seed_data = std::array<int, std::mt19937::state_size>{};
 
-      std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+      std::ranges::generate(seed_data, std::ref(rd));
       static std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
 
       generator_ = std::mt19937(seq);

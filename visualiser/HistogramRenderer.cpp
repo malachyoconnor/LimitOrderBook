@@ -5,22 +5,19 @@
 #include <iostream>
 
 void HistogramRenderer::CalculateBucketFullness() {
-   int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
+   const int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
    buckets_.resize(numberOfBuckets_);
 
    int64_t total_quantity = 0;
    double max_quantity = 0;
-   std::fill(buckets_.begin(), buckets_.end(), 0);
+   std::ranges::fill(buckets_, 0);
 
-   for (auto priceAndQuantity: priceAndQuantityGenerator_()) {
-      const int64_t price = priceAndQuantity.price;
-
+   for (const auto &[price, quantity]: priceAndQuantityGenerator_()) {
       if (!is_between_inclusive(price, lowestPrice_, highestPrice_)) continue;
 
       int bucket_index = price / bucket_value;
       bucket_index = std::clamp(bucket_index, 0, numberOfBuckets_ - 1);
 
-      const auto quantity = priceAndQuantity.quantity;
       buckets_.at(bucket_index) += static_cast<double>(quantity);
       total_quantity += quantity;
       max_quantity = std::max(max_quantity, buckets_.at(bucket_index));
@@ -29,7 +26,7 @@ void HistogramRenderer::CalculateBucketFullness() {
    if (total_quantity == 0) return;
 
    double multiplier = 1;
-   double largest_fraction = max_quantity / total_quantity;
+   const double largest_fraction = max_quantity / total_quantity;
    if (largest_fraction < 0.7) {
       multiplier = 0.7 / largest_fraction;
    }
@@ -85,10 +82,10 @@ void HistogramRenderer::DrawTextOverlay() const {
       const int textX = histogramX_ + 4 + (i * bucketWidth);
       const int textY = histogramY_ + histogramHeight_;
 
-      const int interval_start_price = lowestPrice_ + i * bucket_value;
+      const int64_t interval_start_price = lowestPrice_ + i * bucket_value;
       std::string text = std::format("£{} ", interval_start_price / 100);
 
-      int offset = (bucketWidth - MeasureText(text.c_str(), 18)) / 2;
+      const int offset = (bucketWidth - MeasureText(text.c_str(), 18)) / 2;
 
       DrawTextEx(TEXT_FONT, text.c_str(), Vector2(textX + offset, textY), 18, 1, BAR_TEXT_COLOUR);
    }
@@ -96,20 +93,20 @@ void HistogramRenderer::DrawTextOverlay() const {
    if (MouseInsideHistogram() && (mouseX <= numberOfBuckets_ * bucketWidth + histogramX_ + histogramWidth_)) {
       const int bucket_index = (mouseX - histogramX_) / bucketWidth;
 
-      const int interval_start_price = lowestPrice_ + bucket_index * bucket_value;
-      const int interval_end_price = lowestPrice_ + (bucket_index + 1) * bucket_value;
+      const int64_t interval_start_price = lowestPrice_ + bucket_index * bucket_value;
+      const int64_t interval_end_price = lowestPrice_ + (bucket_index + 1) * bucket_value;
       const double percentage = 100 * buckets_.at(bucket_index);
 
-      std::string text = std::format("{:.2}% ${}.{:02}-£{}.{:02}", percentage,
-                                     interval_start_price / 100, interval_start_price % 100,
-                                     interval_end_price / 100, interval_end_price % 100);
+      const std::string text = std::format("{:.2}% ${}.{:02}-£{}.{:02}", percentage,
+                                           interval_start_price / 100, interval_start_price % 100,
+                                           interval_end_price / 100, interval_end_price % 100);
 
       int textX = mouseX + 20;
       const int textY = mouseY + 20;
       constexpr int fontSize = 35;
 
-      int boxHeight = 35 + 10;
-      int boxWidth = MeasureText(text.c_str(), 35) + 10;
+      const int boxHeight = 35 + 10;
+      const int boxWidth = MeasureText(text.c_str(), 35) + 10;
 
       if (boxWidth + textX >= GetScreenWidth()) {
          textX -= boxWidth + textX - GetScreenWidth() + 5;
@@ -124,10 +121,10 @@ void HistogramRenderer::DrawTitle() const {
    if (title_.empty()) return;
 
    constexpr int fontSize = 35;
-   int titleSize = MeasureText(title_.c_str(), fontSize);
+   const int titleSize = MeasureText(title_.c_str(), fontSize);
 
-   int titleX = histogramX_ + (histogramWidth_ - titleSize) / 2;
-   int titleY = histogramY_ - fontSize;
+   const int titleX = histogramX_ + (histogramWidth_ - titleSize) / 2;
+   const int titleY = histogramY_ - fontSize;
 
    DrawTextEx(TEXT_FONT, title_.c_str(), Vector2(titleX, titleY), fontSize, 5, BAR_FILL_COLOUR);
 }

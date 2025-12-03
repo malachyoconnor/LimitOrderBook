@@ -43,7 +43,7 @@ bool OrderBook::AddOrder(Order order) {
    if (order_map_.contains(order.GetOrderId())) return false;
 
    if (order.GetOrderType() == Market) {
-      auto marketPrice = GetWorstPrice(order);
+      const std::optional<Price> marketPrice = GetWorstPrice(order);
       if (!marketPrice) return false; // No liquidity
 
       order.ToFillAndKill(*marketPrice);
@@ -116,7 +116,7 @@ bool OrderBook::CanBeFilled(Order orderToFill) {
 
       for (auto iter = level.begin(); iter != level.end();) {
          Order &other_order = *iter;
-         Quantity quantity_traded = std::min(orderToFill.GetQuantity(), other_order.GetQuantity());
+         const Quantity quantity_traded = std::min(orderToFill.GetQuantity(), other_order.GetQuantity());
 
          orderToFill.fillOrder(quantity_traded);
          if (orderToFill.IsFilled()) return true;
