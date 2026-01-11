@@ -1,0 +1,57 @@
+#pragma once
+
+#include "Order.h"
+#include "Price.h"
+#include <list>
+#include <map>
+#include <mutex>
+#include <generator>
+#include <unordered_map>
+
+#include "Trade.h"
+
+using OrderPointer = std::list<Order>::iterator;
+using TradeIterator = std::list<Trade>::iterator;
+
+template<Side Side_>
+using Book =
+std::map<Price, std::list<Order>, std::conditional_t<Side_ == Side::BID, std::greater<>, std::less<> > >;
+
+class OrderBook {
+public:
+   OrderBook() = default;
+
+   template<Side Side_>
+   bool TryFill(Order &orderToFill);
+   bool AddOrder(Order order);
+   bool DeleteOrder(Uuid uuid);
+   void PrintBook();
+
+   template<Side Side_>
+   std::generator<Order> WalkOrders() const;
+
+   std::generator<Trade> WalkTrades() const;
+
+   std::generator<Trade> WalkLatestTrades() const;
+
+   std::size_t Size() const { return order_map_.size(); };
+
+private:
+   template<Side Side_>
+   Book<Side_> &GetBook();
+
+   template<Side Side_>
+   const Book<Side_> &GetConstBook() const;
+
+   template<Side Side_>
+   bool CanBeFilled(Order orderToFill);
+   std::optional<Price> GetWorstPrice(const Order &order) const;
+
+   void OnMatch(Order &orderToFill, Order &otherOrder);
+
+   std::map<Price, std::list<Order>, std::greater<> > bids_{};
+   std::map<Price, std::list<Order>, std::less<> > asks_{};
+   std::unordered_map<Uuid, OrderPointer> order_map_{};
+   std::list<Trade> all_trades_{};
+   TradeIterator newestTrades = all_trades_.begin();
+};

@@ -1,20 +1,14 @@
 cmake_minimum_required(VERSION 3.28)
-project(LimitOrderBook)
+project(OrderBook)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
-add_executable(LimitOrderBook main.cpp
-        Order.h
-        Price.h
-        Quantity.h
-        typedefs.h
-        Random.h
-        libs/uuid_utils.h
-        OrderBook.cpp
-        OrderBook.h)
+add_subdirectory(limitOrderBook) # LOB implementation
+add_subdirectory(libs)           # raylib
+add_subdirectory(visualiser)     # Visualisation implementation
 
-add_subdirectory(libs)
-target_link_libraries(LimitOrderBook PUBLIC uuid)
+add_executable(LOB main.cpp RandomOrderGenerator.h)
+target_link_libraries(LOB PUBLIC LimitOrderBook)
 
-
-target_compile_options(LimitOrderBook PUBLIC -Werror=switch)
+add_executable(go_visualise visualise.cpp RandomOrderGenerator.h)
+target_link_libraries(go_visualise PUBLIC visualiser LimitOrderBook raylib)
