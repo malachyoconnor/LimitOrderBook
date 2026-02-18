@@ -8,7 +8,7 @@
 int HistogramRenderer::GetBucketIndexFromPrice(const int64_t price) const {
    if (!is_between_inclusive(price, lowestPrice_, highestPrice_))
       return -1;
-   static int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
+   int bucket_value = static_cast<int>(highestPrice_ - lowestPrice_) / numberOfBuckets_;
 
    int bucket_index = static_cast<int>(price - lowestPrice_) / bucket_value;
    bucket_index = std::clamp(bucket_index, 0, numberOfBuckets_ - 1);
@@ -54,7 +54,7 @@ void HistogramRenderer::DrawBuckets() const {
       // Start by drawing the bucket grid. If we have 10 buckets, we need to draw 11 lines.
       DrawLine(x, y, x, y + histogramHeight_, GRID_COLOUR);
 
-      if (totalQuantity_ > 0 && largestSingleQuantity_ > 0) {
+      if (i < numberOfBuckets_ && totalQuantity_ > 0 && largestSingleQuantity_ > 0) {
          const double barHeightFrac = static_cast<double>(buckets_[i]) / static_cast<double>(totalQuantity_);
          int barHeight = barHeightFrac * histogramHeight_;
 
@@ -62,13 +62,11 @@ void HistogramRenderer::DrawBuckets() const {
             barHeight *= 0.7 / (static_cast<double>(largestSingleQuantity_) / static_cast<double>(totalQuantity_));
          }
 
-         if (i < numberOfBuckets_) {
-            if (barsGrowDownwards_) {
-               DrawRectangle(x + 1, y, bucketWidth - 1, barHeight, BAR_FILL_COLOUR);
-            } else {
-               int distanceFromZero = histogramHeight_ - barHeight;
-               DrawRectangle(x + 1, y + distanceFromZero, bucketWidth - 1, barHeight, BAR_FILL_COLOUR);
-            }
+         if (barsGrowDownwards_) {
+            DrawRectangle(x + 1, y, bucketWidth - 1, barHeight, BAR_FILL_COLOUR);
+         } else {
+            int distanceFromZero = histogramHeight_ - barHeight;
+            DrawRectangle(x + 1, y + distanceFromZero, bucketWidth - 1, barHeight, BAR_FILL_COLOUR);
          }
       }
    }
